@@ -708,8 +708,8 @@ sub parse_subdir_hdr_blk {
   for (my $i = 0; $i < 12; $i++) {
     my $storage_type_name_length = shift @flds;
     my $storage_type = ($storage_type_name_length & 0xf0) >> 4;
-    print sprintf("storage_type_name_length=%02x\n", $storage_type_name_length);
-    print sprintf("storage_type=%02x\n", $storage_type);
+    print sprintf("storage_type_name_length=%02x\n", $storage_type_name_length) if $debug;
+    print sprintf("storage_type=%02x\n", $storage_type) if $debug;
     my $name_length = $storage_type_name_length & 0x0f;
     print sprintf("name_length=%02x\n", $name_length) if $debug;
     my $file_name = shift @flds;
@@ -885,12 +885,12 @@ sub get_ind_blk {
 
   if (read_blk($pofile, $ind_blk, \$buf)) {
     dump_blk($buf) if $debug;
-    my (@lo) = unpack "C256", $buf;
+    my @lo = unpack "C256", $buf;
     #foreach my $byte (@lo) {
     #  print sprintf("%02x ", $byte);
     #}
     #print "\n";
-    my (@hi) = unpack "x256C256", $buf;
+    my @hi = unpack "x256C256", $buf;
     #foreach my $byte (@hi) {
     #  print sprintf("%02x ", $byte);
     #}
@@ -901,6 +901,14 @@ sub get_ind_blk {
       #print sprintf("blk=%04x\n", $blk);
       push @blocks, $blk;
     }
+    #print "blocks=\n";
+    #my $x = 0;
+    #foreach my $block (@blocks) {
+    #  printf("%04x ", $block);
+    #  $x++;
+    #  print "\n" if !($x % 16);
+    #}
+    #print "\n";
   }
 
   return @blocks;
@@ -969,7 +977,7 @@ sub find_file {
 # Read a file
 #
 sub read_file {
-  my ($pofile, $filename, $mode, $conv, $dbg) = @_;
+  my ($pofile, $filename, $mode, $conv, $output_file, $dbg) = @_;
 
   $debug = 1 if defined $dbg && $dbg;
 
@@ -980,6 +988,16 @@ sub read_file {
   return if $storage_type == 0;
 
   my $buf;
+
+  my $ofh;
+
+  if (! defined $output_file || $output_file eq '') {
+    $ofh = \*STDOUT;
+  } else {
+    if (!open($ofh, ">$output_file")) {
+      return 0;
+    }
+  }
 
   print "storage_type=$storage_type file_type=$file_type key_pointer=$key_pointer blocks_used=$blocks_used\n" if $debug;
 
@@ -1015,6 +1033,8 @@ sub read_file {
       if (read_blk($pofile, $blk, \$buf2)) {
         dump_blk($buf2) if $debug;
         my @bytes = unpack "C*", $buf2;
+        #my $x = 0;
+        #print "bytes=\n";
         foreach my $byte (@bytes) {
           # For text file translation.
           last if $byte == 0x00 && $mode eq 'T';
@@ -1023,8 +1043,15 @@ sub read_file {
           # Convert Apple II ASCII to standard ASCII (clear high bit)
           $byte &= 0x7f if $mode eq 'T';
           #print sprintf("%c", $byte & 0x7f);
-          print sprintf("%c", $byte);
+          #print sprintf("%c", $byte);
+          #print $ofh ord($byte);
+          print $ofh sprintf("%c", $byte);
+          #$x++;
+          #printf("%02x ", $byte);
+          #print "\n" if !($x % 16);
         }
+        #print "\n";
+        #print "Wrote $x bytes\n";
       }
       last if $blkno++ == $blocks_used - 1;
     }
@@ -1035,6 +1062,8 @@ sub read_file {
   } else {
     print "Not a regular file!\n";
   }
+
+  return 1;
 }
 
 #
@@ -1110,7 +1139,7 @@ sub freemap {
 
   my (@blocks) = get_vol_bit_map($pofile, $debug);
 
-  print "    12345678\n";
+  print "    01234567\n";
   print "   +--------\n";
 
   my $trk = 0;
@@ -1121,6 +1150,12 @@ sub freemap {
     print sprintf("%2d |%s\n", $trk++, $bits);
   }
   print "\n";
+}
+
+#
+# Write a file
+#
+sub wriet_file {
 }
 
 1;

@@ -12,8 +12,10 @@ use strict;
 
 use ProDOS;
 
-my $mode = 'T';  # T=Text
-my $conv = 1;  # Convert \r to \n
+#my $mode = 'T';  # T=Text
+my $mode = 'B';  # B=Binary
+#my $conv = 1;  # Convert \r to \n
+my $conv = 0;  # Don't convert \r to \n
 my $debug = 0;
 
 while (defined $ARGV[0] && $ARGV[0] =~ /^-/) {
@@ -59,8 +61,9 @@ while (defined $ARGV[0] && $ARGV[0] =~ /^-/) {
 
 my $pofile = shift or die "Must supply .po filename\n";
 my $filename = shift or die "Must supply filename (on disk image)\n";
+my $output_file = shift;
 
-read_file($pofile, $filename, $mode, $conv, $debug);
+read_file($pofile, $filename, $mode, $conv, $output_file, $debug);
 
 1;
 
