@@ -20,6 +20,26 @@ use Exporter::Auto;
 
 my $debug = 0;
 
+# For free space counts.
+my %ones_count = (
+  0x00 => 0,  # 0000
+  0x01 => 1,  # 0001
+  0x02 => 1,  # 0010
+  0x03 => 2,  # 0011
+  0x04 => 1,  # 0100
+  0x05 => 2,  # 0101
+  0x06 => 2,  # 0110
+  0x07 => 3,  # 0111
+  0x08 => 1,  # 1000
+  0x09 => 2,  # 1001
+  0x0a => 2,  # 1010
+  0x0b => 3,  # 1011
+  0x0c => 2,  # 1100
+  0x0d => 3,  # 1101
+  0x0e => 3,  # 1110
+  0x0f => 4,  # 1111
+);
+
 # ProDOS file types
 my %ftype = (
   # $0x Types: General
@@ -981,7 +1001,9 @@ sub read_file {
 
   $debug = 1 if defined $dbg && $dbg;
 
-  print "pofile=$pofile filename=$filename mode=$mode conv=$conv\n" if $debug;
+  $output_file = '' unless defined $output_file;
+
+  print "pofile=$pofile filename=$filename mode=$mode conv=$conv output_filename=$output_file\n" if $debug;
 
   my ($storage_type, $file_type, $key_pointer, $blocks_used) = find_file($pofile, $filename, $debug);
 
@@ -991,7 +1013,7 @@ sub read_file {
 
   my $ofh;
 
-  if (! defined $output_file || $output_file eq '') {
+  if ($output_file eq '') {
     $ofh = \*STDOUT;
   } else {
     if (!open($ofh, ">$output_file")) {
@@ -1118,9 +1140,10 @@ sub get_vol_bit_map {
       dump_blk($buf) if $debug;
       my (@blks) = parse_vol_bit_map($buf, $debug);
       foreach my $blk (@blks) {
+        #print "trk=$trk blk=$blk\n";
+        last if $trk++ >= $num_tracks;
         #print sprintf("%02x ", $blk);
         push @blocks, $blk;
-        last if $trk++ >= $num_tracks;
       }
       #print "\n";
     }
@@ -1142,20 +1165,30 @@ sub freemap {
   print "    01234567\n";
   print "   +--------\n";
 
+  my $free_blocks = 0;
+  my $max_trk = scalar @blocks;
+  #print "max_trk=$max_trk\n";
   my $trk = 0;
   foreach my $byte (@blocks) {
     my $bits = sprintf("%08b", $byte);
-    $bits =~ s/[0]/ /g;
-    $bits =~ s/[1]/\*/g;
+    $bits =~ s/[0]/\*/g;
+    $bits =~ s/[1]/ /g;
     print sprintf("%2d |%s\n", $trk++, $bits);
+    $free_blocks += $ones_count{($byte >> 4) & 0x0f};  # Blocks 7654
+    $free_blocks += $ones_count{$byte & 0x0f};  # Blocks 3210
   }
-  print "\n";
+  print "\nFree Blocks $free_blocks\n";
 }
 
 #
 # Write a file
 #
-sub wriet_file {
+sub write_file {
+  my ($pofile, $filename, $mode, $conv, $apple_filename, $dbg) = @_;
+
+  $debug = 1 if defined $dbg && $dbg;
+
+  print "pofile=$pofile filename=$filename mode=$mode conv=$conv apple_filename=$apple_filename\n" if $debug;
 }
 
 1;

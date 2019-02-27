@@ -58,9 +58,10 @@ while (defined $ARGV[0] && $ARGV[0] =~ /^-/) {
 }
 
 my $pofile = shift or die "Must supply .po filename\n";
-my $filename = shift or die "Must supply filename (on disk image)\n";
+my $filename = shift or die "Must supply filename (on local drive)\n";
+my $apple_filename = shift or die "Must supply filename (on disk image)\n";
 
-write_file($pofile, $filename, $mode, $conv, $debug);
+write_file($pofile, $filename, $mode, $conv, $apple_filename, $debug);
 
 1;
 
