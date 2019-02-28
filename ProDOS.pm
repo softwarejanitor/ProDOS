@@ -684,7 +684,7 @@ sub parse_vol_dir_blk {
     if ($storage_type != 0) {
       my $f_type = $ftype{$file_type};
       $f_type = sprintf("\$%02x", $file_type) unless defined $f_type;
-      push @files, { 'filename' => $fname, 'ftype' => $f_type, 'used' => $blocks_used, 'mdate' => $mdate, 'cdate' => $cdate, 'atype' => $aux_type, 'atype' => $atype, 'access' => $access, 'eof' => $endfile, 'keyptr' => $key_pointer, 'storage_type' => $storage_type };
+      push @files, { 'prv' => $prv_vol_dir_blk, 'nxt' => $nxt_vol_dir_blk, 'filename' => $fname, 'ftype' => $f_type, 'used' => $blocks_used, 'mdate' => $mdate, 'cdate' => $cdate, 'atype' => $aux_type, 'atype' => $atype, 'access' => $access, 'eof' => $endfile, 'keyptr' => $key_pointer, 'storage_type' => $storage_type };
     }
   }
 
@@ -760,7 +760,7 @@ sub parse_subdir_hdr_blk {
     if ($storage_type != 0) {
       my $f_type = $ftype{$file_type};
       $f_type = sprintf("\$%02x", $file_type) unless defined $f_type;
-      push @files, { 'filename' => $fname, 'ftype' => $f_type, 'used' => $blocks_used, 'mdate' => $mdate, 'cdate' => $cdate, 'atype' => $aux_type, 'atype' => $atype, 'access' => $access, 'eof' => $endfile, 'keyptr' => $key_pointer, 'storage_type' => $storage_type };
+      push @files, { 'prv' => $prv_vol_dir_blk, 'nxt' => $nxt_vol_dir_blk,  'filename' => $fname, 'ftype' => $f_type, 'used' => $blocks_used, 'mdate' => $mdate, 'cdate' => $cdate, 'atype' => $aux_type, 'atype' => $atype, 'access' => $access, 'eof' => $endfile, 'keyptr' => $key_pointer, 'storage_type' => $storage_type };
     }
   }
 
@@ -948,20 +948,59 @@ sub find_file {
   my $file_type = 0x00;
   my $key_pointer = 0x00;
   my $blocks_used = 0x00;
+  my $eof = 0x00;
+
+  my $base_dir = '';
+  my $fname = '';
+  if ($filename =~ /^(\S+)\/(\S+)/) {
+    # Contains subdirs.
+    $base_dir = $1;
+    $fname = $2;
+  }
 
   my ($prv_vol_dir_blk, $nxt_vol_dir_blk, $storage_type_name_length, $volume_name, $creation_ymd, $creation_hm, $version, $min_version, $access, $entry_length, $entries_per_block, $file_count, $bit_map_pointer, $total_blocks, @files) = get_key_vol_dir_blk($pofile, $debug);
 
   my $found_it = 0;
   foreach my $file (@files) {
-    #print "file=$file->{'filename'}\n";
-    if ($file->{'filename'} eq $filename) {
-      #print "FOUND IT!\n";
-      $found_it = 1;
-      $storage_type = $file->{'storage_type'};
-      $file_type = $file->{'ftype'};
-      $key_pointer = $file->{'keyptr'};
-      $blocks_used = $file->{'used'};
-      last;
+    if ($base_dir eq '') {
+      #print "file=$file->{'filename'}\n";
+      if ($file->{'filename'} eq $filename) {
+        #print "FOUND IT!\n";
+        $found_it = 1;
+        $storage_type = $file->{'storage_type'};
+        $file_type = $file->{'ftype'};
+        $key_pointer = $file->{'keyptr'};
+        $blocks_used = $file->{'used'};
+        $eof = $file->{'eof'};
+        last;
+      }
+    } else {
+      if ($file->{'filename'} eq $base_dir) {
+        #print "FOUND IT!\n";
+        $found_it = 1;
+        $storage_type = $file->{'storage_type'};
+        $file_type = $file->{'ftype'};
+        $key_pointer = $file->{'keyptr'};
+        $blocks_used = $file->{'used'};
+        $eof = $file->{'eof'};
+
+        # Now read the subdir(s) and look for the file.
+        my ($prv_vol_dir_blk, $nxt_vol_dir_blk, $storage_type_name_length, $subdir_name, $creation_ymd, $creation_hm, $version, $min_version, $access, $entry_length, $entries_per_block, $file_count, $parent_pointer, $parent_entry, $parent_entry_length, @subfiles) = get_subdir_hdr($pofile, $key_pointer, $debug);
+
+        foreach my $subfile (@subfiles) {
+          #print "filename=$subfile->{'filename'}\n";
+          if ($subfile->{'filename'} eq $fname) {
+            #print "FOUND IT!\n";
+            $found_it = 1;
+            $storage_type = $subfile->{'storage_type'};
+            $file_type = $subfile->{'ftype'};
+            $key_pointer = $subfile->{'keyptr'};
+            $blocks_used = $subfile->{'used'};
+            $eof = $subfile->{'eof'};
+          }
+        }
+        last;
+      }
     }
   }
 
@@ -972,15 +1011,45 @@ sub find_file {
       my ($prv_vol_dir_blk, $nxt_vol_dir_blk, @files) = get_vol_dir_blk($pofile, $vol_dir_blk, $debug);
 
       foreach my $file (@files) {
-        #print "file=$file->{'filename'}\n";
-        if ($file->{'filename'} eq $filename) {
-          #print "FOUND IT!\n";
-          $found_it = 1;
-          $storage_type = $file->{'storage_type'};
-          $file_type = $file->{'ftype'};
-          $key_pointer = $file->{'keyptr'};
-          $blocks_used = $file->{'used'};
-          last;
+        if ($base_dir eq '') {
+          #print "file=$file->{'filename'}\n";
+          if ($file->{'filename'} eq $filename) {
+            #print "FOUND IT!\n";
+            $found_it = 1;
+            $storage_type = $file->{'storage_type'};
+            $file_type = $file->{'ftype'};
+            $key_pointer = $file->{'keyptr'};
+            $blocks_used = $file->{'used'};
+            $eof = $file->{'eof'};
+            last;
+          }
+        } else {
+          if ($file->{'filename'} eq $base_dir) {
+            #print "FOUND IT!\n";
+            $found_it = 1;
+            $storage_type = $file->{'storage_type'};
+            $file_type = $file->{'ftype'};
+            $key_pointer = $file->{'keyptr'};
+            $blocks_used = $file->{'used'};
+            $eof = $file->{'eof'};
+
+            # Now read the subdir(s) and look for the file.
+            my ($prv_vol_dir_blk, $nxt_vol_dir_blk, $storage_type_name_length, $subdir_name, $creation_ymd, $creation_hm, $version, $min_version, $access, $entry_length, $entries_per_block, $file_count, $parent_pointer, $parent_entry, $parent_entry_length, @subfiles) = get_subdir_hdr($pofile, $key_pointer, $debug);
+
+            foreach my $subfile (@subfiles) {
+              #print "filename=$subfile->{'filename'}\n";
+              if ($subfile->{'filename'} eq $fname) {
+                #print "FOUND IT!\n";
+                $found_it = 1;
+                $storage_type = $subfile->{'storage_type'};
+                $file_type = $subfile->{'ftype'};
+                $key_pointer = $subfile->{'keyptr'};
+                $blocks_used = $subfile->{'used'};
+                $eof = $subfile->{'eof'};
+              }
+            }
+            last;
+          }
         }
       }
       $vol_dir_blk = $nxt_vol_dir_blk;
@@ -990,7 +1059,7 @@ sub find_file {
 
   print "File not found\n" unless $found_it;
 
-  return $storage_type, $file_type, $key_pointer, $blocks_used;
+  return $storage_type, $file_type, $key_pointer, $blocks_used, $eof;
 }
 
 #
@@ -1005,7 +1074,7 @@ sub read_file {
 
   print "pofile=$pofile filename=$filename mode=$mode conv=$conv output_filename=$output_file\n" if $debug;
 
-  my ($storage_type, $file_type, $key_pointer, $blocks_used) = find_file($pofile, $filename, $debug);
+  my ($storage_type, $file_type, $key_pointer, $blocks_used, $eof) = find_file($pofile, $filename, $debug);
 
   return if $storage_type == 0;
 
@@ -1077,6 +1146,8 @@ sub read_file {
       }
       last if $blkno++ == $blocks_used - 1;
     }
+    # Truncate file to size.
+##FIXME
   # Tree file, 257+ blocks
   } elsif ($storage_type == 3) {
     my @blks = get_master_ind_blk($pofile, $key_pointer, $debug);
