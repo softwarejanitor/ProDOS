@@ -2,10 +2,10 @@ TODO:
 
 prozap.pl -- partially working
 procat.pl -- partially working
-profree.pl -- partially working
+profree.pl -- mostly working
 proread.pl -- partially working
 prowrite.pl -- started
-prorename.pl
-prodelete.pl
-procopy.pl
+prorename.pl -- started
+prodelete.pl -- started
+procopy.pl -- started
 

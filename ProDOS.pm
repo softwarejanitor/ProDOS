@@ -1401,5 +1401,38 @@ sub write_file {
   print "pofile=$pofile filename=$filename mode=$mode conv=$conv apple_filename=$apple_filename\n" if $debug;
 }
 
+#
+# Rename a file
+#
+sub rename_file {
+  my ($pofile, $filename, $new_filename, $dbg) = @_;
+
+  $debug = 1 if defined $dbg && $dbg;
+
+  print "pofile=$pofile filename=$filename new_filename=$new_filename\n" if $debug;
+}
+
+#
+# Delete a file
+#
+sub delete_file {
+  my ($pofile, $filename, $dbg) = @_;
+
+  $debug = 1 if defined $dbg && $dbg;
+
+  print "pofile=$pofile filename=$filename\n" if $debug;
+}
+
+#
+# Copy a file
+#
+sub copy_file {
+  my ($pofile, $filename, $copy_filename, $dbg) = @_;
+
+  $debug = 1 if defined $dbg && $dbg;
+
+  print "pofile=$pofile filename=$filename copy_filename=$copy_filename\n" if $debug;
+}
+
 1;
 
