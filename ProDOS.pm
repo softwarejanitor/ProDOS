@@ -551,6 +551,17 @@ for (my $i = 0; $i < 12; $i++) {
 #
 my $subdir_hdr_blk_tmpl = 'vvCa15Cx7vvCCCCCvvCCa469';
 
+#
+# Master Index Block (tree file)
+#
+my $master_ind_blk_lo_tmpl = 'C256';
+my $master_ind_blk_hi_tmpl = 'x256C256';
+
+#
+# Index Block (tree file)
+#
+my $sub_ind_blk_lo_tmpl = 'C256';
+my $sub_ind_blk_hi_tmpl = 'x256C256';
 
 #
 # Convert a ProDOS date to DD-MMM-YY string.
@@ -863,6 +874,39 @@ sub parse_master_ind_blk {
   my ($buf, $dbg) = @_;
 
   $debug = 1 if defined $dbg && $dbg;
+
+  my @lo = unpack $master_ind_blk_lo_tmpl, $buf;
+  my @hi = unpack $master_ind_blk_hi_tmpl, $buf;
+
+  #print "lo=\n";
+  #my $l = 0;
+  #foreach my $lob (@lo) {
+  #  print "\n" if !($l++ % 16);
+  #  printf("%02x ", $lob);
+  #}
+  #print "\n";
+
+  #print "hi=\n";
+  #my $h = 0;
+  #foreach my $hib (@hi) {
+  #  print "\n" if !($h++ % 16);
+  #  printf("%02x ", $hib);
+  #}
+  #print "\n";
+
+  my @blocks = ();
+
+  #print "blks=\n";
+  foreach (my $blkno = 0; $blkno < 256; $blkno++) {
+    #my $v = ($hi[$blkno] << 8) | $lo[$blkno];
+    #printf("blkno=%d lo=%02x hi=%02x block=%04x\n", $blkno, $lo[$blkno], $hi[$blkno], $v);
+    #print "\n" if !($blkno++ % 16);
+    $blocks[$blkno] = ($hi[$blkno] << 8) | $lo[$blkno];
+    #printf("%04x ", $blocks[$blkno]);
+  }
+  #print "\n";
+
+  return @blocks;
 }
 
 # Get master index block (tree file)
@@ -875,20 +919,69 @@ sub get_master_ind_blk {
 
   my $buf;
 
-  my @blocks = ();
-
   if (read_blk($pofile, $master_ind_blk, \$buf)) {
     dump_blk($buf) if $debug;
   }
 
-  return @blocks;
+  return parse_master_ind_blk($buf, $debug);
 }
 
-# Parse index block (sapling file)
-sub parse_ind_blk {
+# Parse sub index block (tree file)
+sub parse_sub_ind_blk {
   my ($buf, $dbg) = @_;
 
   $debug = 1 if defined $dbg && $dbg;
+
+  my @lo = unpack $sub_ind_blk_lo_tmpl, $buf;
+  my @hi = unpack $sub_ind_blk_hi_tmpl, $buf;
+
+  #print "lo=\n";
+  #my $l = 0;
+  #foreach my $lob (@lo) {
+  #  print "\n" if !($l++ % 16);
+  #  printf("%02x ", $lob);
+  #}
+  #print "\n";
+
+  #print "hi=\n";
+  #my $h = 0;
+  #foreach my $hib (@hi) {
+  #  print "\n" if !($h++ % 16);
+  #  printf("%02x ", $hib);
+  #}
+  #print "\n";
+
+  my @blocks = ();
+
+  #print "subblks=\n";
+  foreach (my $blkno = 0; $blkno < 256; $blkno++) {
+  #  print "\n" if !($blkno++ % 16);
+    $blocks[$blkno] = ($hi[$blkno] << 8) | $lo[$blkno];
+  #  printf("%04x ", $blocks[$blkno]);
+  }
+  #print "\n";
+
+  return @blocks;
+}
+
+# Get sub index block (tree file)
+sub get_sub_ind_blk {
+  my ($pofile, $sub_ind_blk, $dbg) = @_;
+
+  $debug = 1 if defined $dbg && $dbg;
+
+  #print "pofile=$pofile sub_ind_blk=$sub_ind_blk\n";
+
+  my $buf;
+
+  my @blocks = ();
+
+  if (read_blk($pofile, $sub_ind_blk, \$buf)) {
+    dump_blk($buf) if $debug;
+    #dump_blk($buf);
+  }
+
+  return parse_sub_ind_blk($buf, $debug);
 }
 
 # Get index block (sapling file)
@@ -950,6 +1043,8 @@ sub find_file {
   my $blocks_used = 0x00;
   my $eof = 0x00;
 
+  # Parse subdirectories
+##FIXME -- needs to handle multiple subdirectory levels.
   my $base_dir = '';
   my $fname = '';
   if ($filename =~ /^(\S+)\/(\S+)/) {
@@ -1076,6 +1171,8 @@ sub read_file {
 
   my ($storage_type, $file_type, $key_pointer, $blocks_used, $eof) = find_file($pofile, $filename, $debug);
 
+  #print "storage_type=$storage_type file_type=$file_type key_pointer=$key_pointer blocks_used=$blocks_used eof=$eof\n";
+
   return if $storage_type == 0;
 
   my $buf;
@@ -1097,8 +1194,7 @@ sub read_file {
     my $buf2;
 
     if (read_blk($pofile, $key_pointer, \$buf2)) {
-      #dump_blk($buf) if $debug;
-      dump_blk($buf);
+      dump_blk($buf) if $debug;
       my @bytes = unpack "C*", $buf2;
       foreach my $byte (@bytes) {
         # For text file translation.
@@ -1133,9 +1229,6 @@ sub read_file {
           $byte = 0x0a if $byte == 0x8d && $conv;
           # Convert Apple II ASCII to standard ASCII (clear high bit)
           $byte &= 0x7f if $mode eq 'T';
-          #print sprintf("%c", $byte & 0x7f);
-          #print sprintf("%c", $byte);
-          #print $ofh ord($byte);
           print $ofh sprintf("%c", $byte);
           #$x++;
           #printf("%02x ", $byte);
@@ -1150,8 +1243,54 @@ sub read_file {
     my $result = truncate $ofh, $eof;
   # Tree file, 257+ blocks
   } elsif ($storage_type == 3) {
+    my $buf2;
+
     my @blks = get_master_ind_blk($pofile, $key_pointer, $debug);
-    ##FIXME -- need to handle Tree files here.
+
+    foreach my $blk (@blks) {
+      #print "blk=$blk\n";
+      last if $blk == 0;
+    }
+    my $blkno = 1;
+    foreach my $blk (@blks) {
+      #print "blkno=$blkno blk=$blk\n";
+      last if $blk == 0;
+      my @subblks = get_sub_ind_blk($pofile, $blk, $debug);
+
+      foreach my $sblk (@subblks) {
+        #print "sblk=$sblk\n";
+        last if $sblk == 0;
+      }
+#die "ACK!\n";
+
+      foreach my $subblk (@subblks) {
+        last if $subblk == 0;
+        clear_buf(\$buf2);
+        if (read_blk($pofile, $subblk, \$buf2)) {
+          dump_blk($buf2) if $debug;
+          my @bytes = unpack "C*", $buf2;
+          #my $x = 0;
+          #print "bytes=\n";
+          foreach my $byte (@bytes) {
+            # For text file translation.
+            last if $byte == 0x00 && $mode eq 'T';
+            # Translate \r to \n
+            $byte = 0x0a if $byte == 0x8d && $conv;
+            # Convert Apple II ASCII to standard ASCII (clear high bit)
+            $byte &= 0x7f if $mode eq 'T';
+            print $ofh sprintf("%c", $byte);
+            #$x++;
+            #printf("%02x ", $byte);
+            #print "\n" if !($x % 16);
+          }
+          #print "\n";
+          #print "Wrote $x bytes\n";
+        }
+        last if $blkno++ == $blocks_used - 1;
+      }
+      # Truncate file to size.
+      my $result = truncate $ofh, $eof;
+    }
   } else {
     print "Not a regular file!\n";
   }
