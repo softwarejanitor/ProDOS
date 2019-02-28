@@ -1147,7 +1147,7 @@ sub read_file {
       last if $blkno++ == $blocks_used - 1;
     }
     # Truncate file to size.
-##FIXME
+    my $result = truncate $ofh, $eof;
   # Tree file, 257+ blocks
   } elsif ($storage_type == 3) {
     my @blks = get_master_ind_blk($pofile, $key_pointer, $debug);
