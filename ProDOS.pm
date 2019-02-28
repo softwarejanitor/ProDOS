@@ -1434,5 +1434,27 @@ sub copy_file {
   print "pofile=$pofile filename=$filename copy_filename=$copy_filename\n" if $debug;
 }
 
+#
+# Lock a file
+#
+sub lock_file {
+  my ($pofile, $filename, $dbg) = @_;
+
+  $debug = 1 if defined $dbg && $dbg;
+
+  print "pofile=$pofile filename=$filename\n" if $debug;
+}
+
+#
+# Unlock a file
+#
+sub unlock_file {
+  my ($pofile, $filename, $dbg) = @_;
+
+  $debug = 1 if defined $dbg && $dbg;
+
+  print "pofile=$pofile filename=$filename\n" if $debug;
+}
+
 1;
 
