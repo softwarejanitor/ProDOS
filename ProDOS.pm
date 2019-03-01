@@ -629,7 +629,7 @@ sub parse_key_vol_dir_blk {
     if ($storage_type != 0) {
       my $f_type = $ftype{$file_type};
       $f_type = sprintf("\$%02x", $file_type) unless defined $f_type;
-      push @files, { 'filename' => $fname, 'ftype' => $f_type, 'used' => $blocks_used, 'mdate' => $mdate, 'cdate' => $cdate, 'atype' => $aux_type, 'atype' => $atype, 'access' => $access, 'eof' => $endfile, 'keyptr' => $key_pointer, 'storage_type' => $storage_type };
+      push @files, { 'prv' => $prv_vol_dir_blk, 'nxt' => $nxt_vol_dir_blk, 'filename' => $fname, 'ftype' => $f_type, 'used' => $blocks_used, 'mdate' => $mdate, 'cdate' => $cdate, 'atype' => $aux_type, 'atype' => $atype, 'access' => $access, 'eof' => $endfile, 'keyptr' => $key_pointer, 'storage_type' => $storage_type, 'header_pointer' => $header_pointer, 'i' => $i };
     }
   }
 
@@ -695,7 +695,7 @@ sub parse_vol_dir_blk {
     if ($storage_type != 0) {
       my $f_type = $ftype{$file_type};
       $f_type = sprintf("\$%02x", $file_type) unless defined $f_type;
-      push @files, { 'prv' => $prv_vol_dir_blk, 'nxt' => $nxt_vol_dir_blk, 'filename' => $fname, 'ftype' => $f_type, 'used' => $blocks_used, 'mdate' => $mdate, 'cdate' => $cdate, 'atype' => $aux_type, 'atype' => $atype, 'access' => $access, 'eof' => $endfile, 'keyptr' => $key_pointer, 'storage_type' => $storage_type };
+      push @files, { 'prv' => $prv_vol_dir_blk, 'nxt' => $nxt_vol_dir_blk, 'filename' => $fname, 'ftype' => $f_type, 'used' => $blocks_used, 'mdate' => $mdate, 'cdate' => $cdate, 'atype' => $aux_type, 'atype' => $atype, 'access' => $access, 'eof' => $endfile, 'keyptr' => $key_pointer, 'storage_type' => $storage_type, 'header_pointer' => $header_pointer, 'i' => $i };
     }
   }
 
@@ -771,7 +771,7 @@ sub parse_subdir_hdr_blk {
     if ($storage_type != 0) {
       my $f_type = $ftype{$file_type};
       $f_type = sprintf("\$%02x", $file_type) unless defined $f_type;
-      push @files, { 'prv' => $prv_vol_dir_blk, 'nxt' => $nxt_vol_dir_blk,  'filename' => $fname, 'ftype' => $f_type, 'used' => $blocks_used, 'mdate' => $mdate, 'cdate' => $cdate, 'atype' => $aux_type, 'atype' => $atype, 'access' => $access, 'eof' => $endfile, 'keyptr' => $key_pointer, 'storage_type' => $storage_type };
+      push @files, { 'prv' => $prv_vol_dir_blk, 'nxt' => $nxt_vol_dir_blk, 'filename' => $fname, 'ftype' => $f_type, 'used' => $blocks_used, 'mdate' => $mdate, 'cdate' => $cdate, 'atype' => $aux_type, 'atype' => $atype, 'access' => $access, 'eof' => $endfile, 'keyptr' => $key_pointer, 'storage_type' => $storage_type, 'header_pointer' => $header_pointer, 'i' => $i };
     }
   }
 
@@ -1042,6 +1042,8 @@ sub find_file {
   my $key_pointer = 0x00;
   my $blocks_used = 0x00;
   my $eof = 0x00;
+  my $header_pointer = '';
+  my $file_index = 0;
 
   # Parse subdirectories
 ##FIXME -- needs to handle multiple subdirectory levels.
@@ -1067,6 +1069,8 @@ sub find_file {
         $key_pointer = $file->{'keyptr'};
         $blocks_used = $file->{'used'};
         $eof = $file->{'eof'};
+        $header_pointer = $file->{'header_pointer'};
+        $file_index = $file->{'i'};
         last;
       }
     } else {
@@ -1078,6 +1082,8 @@ sub find_file {
         $key_pointer = $file->{'keyptr'};
         $blocks_used = $file->{'used'};
         $eof = $file->{'eof'};
+        $header_pointer = $file->{'header_pointer'};
+        $file_index = $file->{'i'};
 
         # Now read the subdir(s) and look for the file.
         my ($prv_vol_dir_blk, $nxt_vol_dir_blk, $storage_type_name_length, $subdir_name, $creation_ymd, $creation_hm, $version, $min_version, $access, $entry_length, $entries_per_block, $file_count, $parent_pointer, $parent_entry, $parent_entry_length, @subfiles) = get_subdir_hdr($pofile, $key_pointer, $debug);
@@ -1092,6 +1098,8 @@ sub find_file {
             $key_pointer = $subfile->{'keyptr'};
             $blocks_used = $subfile->{'used'};
             $eof = $subfile->{'eof'};
+            $header_pointer = $subfile->{'header_pointer'};
+            $file_index = $subfile->{'i'};
           }
         }
         last;
@@ -1116,6 +1124,8 @@ sub find_file {
             $key_pointer = $file->{'keyptr'};
             $blocks_used = $file->{'used'};
             $eof = $file->{'eof'};
+            $header_pointer = $file->{'header_pointer'};
+            $file_index = $file->{'i'};
             last;
           }
         } else {
@@ -1127,6 +1137,8 @@ sub find_file {
             $key_pointer = $file->{'keyptr'};
             $blocks_used = $file->{'used'};
             $eof = $file->{'eof'};
+            $header_pointer = $file->{'header_pointer'};
+            $file_index = $file->{'i'};
 
             # Now read the subdir(s) and look for the file.
             my ($prv_vol_dir_blk, $nxt_vol_dir_blk, $storage_type_name_length, $subdir_name, $creation_ymd, $creation_hm, $version, $min_version, $access, $entry_length, $entries_per_block, $file_count, $parent_pointer, $parent_entry, $parent_entry_length, @subfiles) = get_subdir_hdr($pofile, $key_pointer, $debug);
@@ -1141,6 +1153,8 @@ sub find_file {
                 $key_pointer = $subfile->{'keyptr'};
                 $blocks_used = $subfile->{'used'};
                 $eof = $subfile->{'eof'};
+                $header_pointer = $subfile->{'header_pointer'};
+                $file_index = $subfile->{'i'};
               }
             }
             last;
@@ -1154,20 +1168,22 @@ sub find_file {
 
   print "File not found\n" unless $found_it;
 
-  return $storage_type, $file_type, $key_pointer, $blocks_used, $eof;
+  return $storage_type, $file_type, $key_pointer, $blocks_used, $eof, $header_pointer, $file_index;
 }
 
 #
 # Read a file
 #
 sub read_file {
-  my ($pofile, $filename, $mode, $conv, $output_file, $dbg) = @_;
+  my ($pofile, $filename, $mode, $conv, $text_conv, $output_file, $dbg) = @_;
 
   $debug = 1 if defined $dbg && $dbg;
 
   $output_file = '' unless defined $output_file;
 
-  print "pofile=$pofile filename=$filename mode=$mode conv=$conv output_filename=$output_file\n" if $debug;
+$debug = 1;
+  print "pofile=$pofile filename=$filename mode=$mode conv=$conv text_conv=$text_conv output_filename=$output_file\n" if $debug;
+$debug = 0;
 
   my ($storage_type, $file_type, $key_pointer, $blocks_used, $eof) = find_file($pofile, $filename, $debug);
 
@@ -1202,7 +1218,7 @@ sub read_file {
         # Translate \r to \n
         $byte = 0x0a if $byte == 0x8d && $conv;
         # Convert Apple II ASCII to standard ASCII (clear high bit)
-        $byte &= 0x7f if $mode eq 'T';
+        $byte &= 0x7f if $mode eq 'T' || $text_conv;
         #print sprintf("%c", $byte & 0x7f);
         print sprintf("%c", $byte);
       }
@@ -1228,7 +1244,7 @@ sub read_file {
           # Translate \r to \n
           $byte = 0x0a if $byte == 0x8d && $conv;
           # Convert Apple II ASCII to standard ASCII (clear high bit)
-          $byte &= 0x7f if $mode eq 'T';
+          $byte &= 0x7f if $mode eq 'T' || $text_conv;
           print $ofh sprintf("%c", $byte);
           #$x++;
           #printf("%02x ", $byte);
@@ -1277,7 +1293,7 @@ sub read_file {
             # Translate \r to \n
             $byte = 0x0a if $byte == 0x8d && $conv;
             # Convert Apple II ASCII to standard ASCII (clear high bit)
-            $byte &= 0x7f if $mode eq 'T';
+            $byte &= 0x7f if $mode eq 'T' || $text_conv;
             print $ofh sprintf("%c", $byte);
             #$x++;
             #printf("%02x ", $byte);
@@ -1443,6 +1459,12 @@ sub lock_file {
   $debug = 1 if defined $dbg && $dbg;
 
   print "pofile=$pofile filename=$filename\n" if $debug;
+
+  my ($storage_type, $file_type, $key_pointer, $blocks_used, $eof, $header_pointer, $i) = find_file($pofile, $filename, $debug);
+
+  print "storage_type=$storage_type file_type=$file_type key_pointer=$key_pointer blocks_used=$blocks_used eof=$eof header_pointer=$header_pointer i=$i\n";
+
+  return if $storage_type == 0;
 }
 
 #
@@ -1454,6 +1476,10 @@ sub unlock_file {
   $debug = 1 if defined $dbg && $dbg;
 
   print "pofile=$pofile filename=$filename\n" if $debug;
+
+  my ($storage_type, $file_type, $key_pointer, $blocks_used, $eof, $header_pointer, $i) = find_file($pofile, $filename, $debug);
+
+  print "storage_type=$storage_type file_type=$file_type key_pointer=$key_pointer blocks_used=$blocks_used eof=$eof header_pointer=$header_pointer i=$i\n";
 }
 
 1;

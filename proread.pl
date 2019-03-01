@@ -16,6 +16,7 @@ use ProDOS;
 my $mode = 'B';  # B=Binary
 #my $conv = 1;  # Convert \r to \n
 my $conv = 0;  # Don't convert \r to \n
+my $text_conv = 0;  # Don't clear high bit
 my $debug = 0;
 
 while (defined $ARGV[0] && $ARGV[0] =~ /^-/) {
@@ -48,7 +49,11 @@ while (defined $ARGV[0] && $ARGV[0] =~ /^-/) {
     shift;
   # Convert (carriage return to linefeed)
   } elsif ($ARGV[0] eq '-c') {
-    $conv = 0;
+    $conv = 1;
+    shift;
+  # Text convert (clear high bit)
+  } elsif ($ARGV[0] eq '-t') {
+    $text_conv = 1;
     shift;
   # Debug
   } elsif ($ARGV[0] eq '-d') {
@@ -63,7 +68,7 @@ my $pofile = shift or die "Must supply .po filename\n";
 my $filename = shift or die "Must supply filename (on disk image)\n";
 my $output_file = shift;
 
-read_file($pofile, $filename, $mode, $conv, $output_file, $debug);
+read_file($pofile, $filename, $mode, $conv, $text_conv, $output_file, $debug);
 
 1;
 
