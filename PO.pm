@@ -133,7 +133,11 @@ sub read_blk {
 sub clear_buf {
   my ($buf) = @_;
 
-  $$buf = pack "C*", 0x00 x 512;
+  $buf = pack "C*", 0x00 x 512;
+
+  $_[0] = $buf;
+
+  return $buf;
 }
 
 #
@@ -153,7 +157,7 @@ sub write_blk {
 
     seek($dfh, $pos, 0);
 
-    print $dfh $buf;
+    print $dfh $$buf;
 
     close $dfh;
 

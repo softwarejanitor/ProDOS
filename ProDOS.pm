@@ -1379,6 +1379,28 @@ sub get_vol_bit_map {
 }
 
 #
+# Count free blocks
+#
+sub freespace {
+  my ($pofile, $dbg) = @_;
+
+  $debug = 1 if defined $dbg && $dbg;
+
+  my (@blocks) = get_vol_bit_map($pofile, $debug);
+
+  my $free_blocks = 0;
+  foreach my $byte (@blocks) {
+    my $bits = sprintf("%08b", $byte);
+    $bits =~ s/[0]/\*/g;
+    $bits =~ s/[1]/ /g;
+    $free_blocks += $ones_count{($byte >> 4) & 0x0f};  # Blocks 7654
+    $free_blocks += $ones_count{$byte & 0x0f};  # Blocks 3210
+  }
+
+  return $free_blocks;
+}
+
+#
 # Display blocks free map
 #
 sub freemap {
@@ -1465,6 +1487,43 @@ sub lock_file {
   print "storage_type=$storage_type file_type=$file_type key_pointer=$key_pointer blocks_used=$blocks_used eof=$eof header_pointer=$header_pointer i=$i\n";
 
   return if $storage_type == 0;
+
+  my $buf;
+
+  if (read_blk($pofile, $header_pointer, \$buf)) {
+    dump_blk($buf) if $debug;
+    dump_blk($buf);
+
+    my @bytes = unpack "C*", $buf;
+
+    my $storage_type = $bytes[4] >> 4;
+    printf("storage_type=\$%02x\n", $storage_type);
+
+    if ($storage_type == 0x0f) {
+      # Volume Directory Header
+      #my ($prv_vol_dir_blk, $nxt_vol_dir_blk, @files) = parse_vol_dir_blk($buf, $debug);
+      #printf("access=\$%02x\n", $files[$i]->{'access'});
+      print "vol dir hdr\n";
+      my $access = $bytes[0x2b + (($i - 1) * 0x27) + 0x1e];
+      printf("access=\$%02x\n", $access);
+      $access &= 0x21;
+      printf("access=\$%02x\n", $access);
+      $bytes[0x2b + (($i - 1) * 0x27) + 0x1e] = $access;
+    } elsif ($storage_type == 0x0e) {
+      # Subdirectory Header
+      print "subdir hdr\n";
+    }
+
+    $buf = pack "C*", @bytes;
+
+    if (!write_blk($pofile, $header_pointer, \$buf)) {
+      return 0;
+    }
+  } else {
+    return 0;
+  }
+
+  return 1;
 }
 
 #
@@ -1480,6 +1539,48 @@ sub unlock_file {
   my ($storage_type, $file_type, $key_pointer, $blocks_used, $eof, $header_pointer, $i) = find_file($pofile, $filename, $debug);
 
   print "storage_type=$storage_type file_type=$file_type key_pointer=$key_pointer blocks_used=$blocks_used eof=$eof header_pointer=$header_pointer i=$i\n";
+
+  return if $storage_type == 0;
+
+  my $buf;
+
+  if (read_blk($pofile, $header_pointer, \$buf)) {
+    dump_blk($buf) if $debug;
+    dump_blk($buf);
+
+    my @bytes = unpack "C*", $buf;
+
+    my $storage_type = $bytes[4] >> 4;
+    printf("storage_type=\$%02x\n", $storage_type);
+
+    if ($storage_type == 0x0f) {
+      # Volume Directory Header
+      #my ($prv_vol_dir_blk, $nxt_vol_dir_blk, @files) = parse_vol_dir_blk($buf, $debug);
+      #printf("access=\$%02x\n", $files[$i]->{'access'});
+      print "vol dir hdr\n";
+      my $access = $bytes[0x2b + (($i - 1) * 0x27) + 0x1e];
+      printf("access=\$%02x\n", $access);
+      $access |= 0x80;
+      $access |= 0x40;
+      $access |= 0x02;
+      $access |= 0x01;
+      printf("access=\$%02x\n", $access);
+      $bytes[0x2b + (($i - 1) * 0x27) + 0x1e] = $access;
+    } elsif ($storage_type == 0x0e) {
+      # Subdirectory Header
+      print "subdir hdr\n";
+    }
+
+    $buf = pack "C*", @bytes;
+
+    if (!write_blk($pofile, $header_pointer, \$buf)) {
+      return 0;
+    }
+  } else {
+    return 0;
+  }
+
+  return 1;
 }
 
 1;
