@@ -1447,7 +1447,68 @@ sub rename_file {
 
   $debug = 1 if defined $dbg && $dbg;
 
-  print "pofile=$pofile filename=$filename new_filename=$new_filename\n" if $debug;
+  #print "pofile=$pofile filename=$filename new_filename=$new_filename\n" if $debug;
+
+  my ($storage_type, $file_type, $key_pointer, $blocks_used, $eof, $header_pointer, $i) = find_file($pofile, $filename, $debug);
+
+  #print "storage_type=$storage_type file_type=$file_type key_pointer=$key_pointer blocks_used=$blocks_used eof=$eof header_pointer=$header_pointer i=$i\n";
+
+  return if $storage_type == 0;
+
+  my $buf;
+
+  if (read_blk($pofile, $header_pointer, \$buf)) {
+    dump_blk($buf) if $debug;
+    #dump_blk($buf);
+
+    my @bytes = unpack "C*", $buf;
+
+    my $storage_type = $bytes[4] >> 4;
+    #printf("storage_type=\$%02x\n", $storage_type);
+
+    if ($storage_type == 0x0f || $storage_type == 0x0e) {
+      my $file_storage_type = $bytes[0x2b + ($i* 0x27)];
+      #printf("file_storage_type=\$%02x\n", $file_storage_type);
+      $file_storage_type &= 0xf0;
+      #printf("file_storage_type=\$%02x\n", $file_storage_type);
+      $file_storage_type |= length($new_filename);
+      $bytes[0x2b + ($i* 0x27)] = $file_storage_type;
+      #printf("file_storage_type=\$%02x\n", $file_storage_type);
+      my $filename_start = 0x2b + ($i * 0x27) + 0x01;
+      #print"filename_start=$filename_start\n";
+      #print "filename='";
+      my $j = 0;
+      for (my $i = $filename_start; $i < ($filename_start + 15); $i++) {
+        #printf("%c", $bytes[$i]);
+        if ($j < length($new_filename)) {
+          $bytes[$i] = ord(substr($new_filename, $j++, 1));
+        } else {
+          $bytes[$i] = 0x00;
+        }
+      }
+      #print "'\n";
+      #print "filename='";
+      #for (my $i = $filename_start; $i < ($filename_start + 15); $i++) {
+      #  printf("%c", $bytes[$i]);
+      #}
+      #print "'\n";
+    } else {
+      printf("Invalid storage type \$%02x\n", $storage_type);
+      return 0;
+    }
+
+    $buf = pack "C*", @bytes;
+
+    dump_blk($buf) if $debug;
+
+    if (!write_blk($pofile, $header_pointer, \$buf)) {
+      return 0;
+    }
+  } else {
+    return 0;
+  }
+
+  return 1;
 }
 
 #
@@ -1499,19 +1560,15 @@ sub lock_file {
     my $storage_type = $bytes[4] >> 4;
     printf("storage_type=\$%02x\n", $storage_type);
 
-    if ($storage_type == 0x0f) {
-      # Volume Directory Header
-      #my ($prv_vol_dir_blk, $nxt_vol_dir_blk, @files) = parse_vol_dir_blk($buf, $debug);
-      #printf("access=\$%02x\n", $files[$i]->{'access'});
-      print "vol dir hdr\n";
-      my $access = $bytes[0x2b + (($i - 1) * 0x27) + 0x1e];
-      printf("access=\$%02x\n", $access);
+    if ($storage_type == 0x0f || $storage_type == 0x0e) {
+      my $access = $bytes[0x2b + ($i * 0x27) + 0x1e];
+      #printf("access=\$%02x\n", $access);
       $access &= 0x21;
-      printf("access=\$%02x\n", $access);
-      $bytes[0x2b + (($i - 1) * 0x27) + 0x1e] = $access;
-    } elsif ($storage_type == 0x0e) {
-      # Subdirectory Header
-      print "subdir hdr\n";
+      #printf("access=\$%02x\n", $access);
+      $bytes[0x2b + ($i * 0x27) + 0x1e] = $access;
+    } else {
+      printf("Invalid storage type \$%02x\n", $storage_type);
+      return 0;
     }
 
     $buf = pack "C*", @bytes;
@@ -1553,22 +1610,18 @@ sub unlock_file {
     my $storage_type = $bytes[4] >> 4;
     printf("storage_type=\$%02x\n", $storage_type);
 
-    if ($storage_type == 0x0f) {
-      # Volume Directory Header
-      #my ($prv_vol_dir_blk, $nxt_vol_dir_blk, @files) = parse_vol_dir_blk($buf, $debug);
-      #printf("access=\$%02x\n", $files[$i]->{'access'});
-      print "vol dir hdr\n";
-      my $access = $bytes[0x2b + (($i - 1) * 0x27) + 0x1e];
-      printf("access=\$%02x\n", $access);
+    if ($storage_type == 0x0f || $storage_type == 0x0e) {
+      my $access = $bytes[0x2b + ($i * 0x27) + 0x1e];
+      #printf("access=\$%02x\n", $access);
       $access |= 0x80;
       $access |= 0x40;
       $access |= 0x02;
       $access |= 0x01;
-      printf("access=\$%02x\n", $access);
-      $bytes[0x2b + (($i - 1) * 0x27) + 0x1e] = $access;
-    } elsif ($storage_type == 0x0e) {
-      # Subdirectory Header
-      print "subdir hdr\n";
+      #printf("access=\$%02x\n", $access);
+      $bytes[0x2b + ($i * 0x27) + 0x1e] = $access;
+    } else {
+      printf("Invalid storage type \$%02x\n", $storage_type);
+      return 0;
     }
 
     $buf = pack "C*", @bytes;

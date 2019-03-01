@@ -5,9 +5,9 @@ procat.pl -- partially working
 profree.pl -- mostly working
 proread.pl -- partially working
 prowrite.pl -- started
-prorename.pl -- started
+prorename.pl -- partially working
 prodelete.pl -- started
+prolock.pl -- partially working
+prounlock.pl -- partially working
 procopy.pl -- started
-prolock.pl -- started
-prounlock.pl -- started
 
