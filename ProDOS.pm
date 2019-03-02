@@ -1189,7 +1189,7 @@ $debug = 0;
 
   #print "storage_type=$storage_type file_type=$file_type key_pointer=$key_pointer blocks_used=$blocks_used eof=$eof\n";
 
-  return if $storage_type == 0;
+  return 0 if $storage_type == 0;
 
   my $buf;
 
@@ -1263,10 +1263,10 @@ $debug = 0;
 
     my @blks = get_master_ind_blk($pofile, $key_pointer, $debug);
 
-    foreach my $blk (@blks) {
-      #print "blk=$blk\n";
-      last if $blk == 0;
-    }
+    #foreach my $blk (@blks) {
+    #  print "blk=$blk\n";
+    #  last if $blk == 0;
+    #}
     my $blkno = 1;
     foreach my $blk (@blks) {
       #print "blkno=$blkno blk=$blk\n";
@@ -1335,6 +1335,17 @@ sub parse_vol_bit_map {
 }
 
 #
+# Pack volume bit map
+#
+sub pack_vol_bit_map {
+  my ($bytes, $dbg) = @_;
+
+  my $buf = pack $vol_bit_map_tmpl, @{$bytes};
+
+  return $buf;
+}
+
+#
 # Get volume bit map
 #
 sub get_vol_bit_map {
@@ -1349,7 +1360,7 @@ sub get_vol_bit_map {
   #print sprintf("bit_map_pointer=%04x\n", $bit_map_pointer) if $debug;
 
   # Need to use total_blocks to calculate the number of volume bit map blocks.
-  #print sprintf("total_blocks=%04x\n", $total_blocks);
+  #print sprintf("total_blocks=\$%04x\n", $total_blocks);
   my $num_tracks = $total_blocks / 8;
   #print sprintf("num_tracks=%d\n", $num_tracks);
   my $num_vol_bit_map_blks = ceil($num_tracks / 512.0);
@@ -1376,6 +1387,33 @@ sub get_vol_bit_map {
   }
 
   return @blocks;
+}
+
+sub write_vol_bit_map {
+  my ($pofile, $bitmaps, $dbg) = @_;
+
+  $debug = 1 if defined $dbg && $dbg;
+
+  my ($prv_vol_dir_blk, $nxt_vol_dir_blk, $storage_type_name_length, $volname, $creation_ymd, $creation_hm, $version, $min_version, $access, $entry_length, $entries_per_block, $file_count, $bit_map_pointer, $total_blocks, @files) = get_key_vol_dir_blk($pofile, $debug);
+
+  print sprintf("bit_map_pointer=%04x\n", $bit_map_pointer) if $debug;
+
+  # Need to use total_blocks to calculate the number of volume bit map blocks.
+  print sprintf("total_blocks=\$%04x\n", $total_blocks);
+  my $num_tracks = $total_blocks / 8;
+  print sprintf("num_tracks=%d\n", $num_tracks);
+  my $num_vol_bit_map_blks = ceil($num_tracks / 512.0);
+  print sprintf("num_vol_bit_map_blks=%d\n", $num_vol_bit_map_blks);
+  $num_vol_bit_map_blks = 1 if $num_vol_bit_map_blks < 1;
+  print sprintf("num_vol_bit_map_blks=%d\n", $num_vol_bit_map_blks);
+
+  my $buf = pack $vol_bit_map_tmpl, @{$bitmaps};
+
+##FIXME -- need to handle multiple vol bit map blocks here.
+  #if (!write_blk($pofile, $bit_map_pointer, \$buf)) {
+  #  return 0;
+  #}
+  return 1;
 }
 
 #
@@ -1453,7 +1491,7 @@ sub rename_file {
 
   #print "storage_type=$storage_type file_type=$file_type key_pointer=$key_pointer blocks_used=$blocks_used eof=$eof header_pointer=$header_pointer i=$i\n";
 
-  return if $storage_type == 0;
+  return 0 if $storage_type == 0;
 
   my $buf;
 
@@ -1512,6 +1550,36 @@ sub rename_file {
 }
 
 #
+# Free a list of blocks.
+#
+sub free_blocks {
+  my ($pofile, $free_blocks, $dbg) = @_;
+
+  $debug = 1 if defined $dbg && $dbg;
+
+  # Get the volume bit map (blocks used/free).
+  my (@bitmaps) = get_vol_bit_map($pofile, $debug);
+
+  #foreach my $byte (@blocks) {
+  #  printf("byte=\$%02x\n", $byte);
+  #}
+
+  # Free blocks in the bit map.
+  foreach my $cur_blk (@{$free_blocks}) {
+    #printf("cur_blk=%d byte=%d bit=%d\n", $cur_blk, $cur_blk / 8, $cur_blk % 8);
+    $bitmaps[$cur_blk / 8] |= (1 << ($cur_blk % 8));
+    last if $cur_blk == 0;
+  }
+
+  #foreach my $byte (@blocks) {
+  #  printf("byte=\$%02x\n", $byte);
+  #}
+
+  # Now write the volume bit map back out.
+  return write_vol_bit_map($pofile, \@bitmaps, $debug);
+}
+
+#
 # Delete a file
 #
 sub delete_file {
@@ -1520,6 +1588,113 @@ sub delete_file {
   $debug = 1 if defined $dbg && $dbg;
 
   print "pofile=$pofile filename=$filename\n" if $debug;
+
+  my ($storage_type, $file_type, $key_pointer, $blocks_used, $eof, $header_pointer, $i) = find_file($pofile, $filename, $debug);
+
+  #print "storage_type=$storage_type file_type=$file_type key_pointer=$key_pointer blocks_used=$blocks_used eof=$eof header_pointer=$header_pointer i=$i\n";
+
+  return 0 if $storage_type == 0;
+
+  my $buf;
+
+  if (read_blk($pofile, $header_pointer, \$buf)) {
+    dump_blk($buf) if $debug;
+    #dump_blk($buf);
+
+    my @bytes = unpack "C*", $buf;
+
+    my $storage_type = $bytes[4] >> 4;
+    #printf("storage_type=\$%02x\n", $storage_type);
+
+    if ($storage_type == 0x0f || $storage_type == 0x0e) {
+      my $file_storage_type = $bytes[0x2b + ($i* 0x27)];
+      #printf("file_storage_type=\$%02x\n", $file_storage_type);
+      $file_storage_type &= 0xf0;
+      #printf("file_storage_type=\$%02x\n", $file_storage_type);
+      $bytes[0x2b + ($i* 0x27)] = 0x00;
+      #printf("file_storage_type=\$%02x\n", $file_storage_type);
+
+      # Now free all the blocks
+      if ($file_storage_type == 0x10) {
+        # Seedling file.
+        return free_blocks($pofile, [ $key_pointer ], $debug );
+      } elsif ($file_storage_type == 0x20) {
+        # Sapling file.
+        my @blks = get_ind_blk($pofile, $key_pointer, $debug);
+
+        return free_blocks($pofile, \@blks, $debug);
+      } elsif ($file_storage_type == 0x30) {
+        # Tree file.
+##FIXME
+        my $buf2;
+
+        my @blks = get_master_ind_blk($pofile, $key_pointer, $debug);
+
+        my @blocks = ();
+        #foreach my $blk (@blks) {
+        #  print "blk=$blk\n";
+        #  last if $blk == 0;
+        #}
+        my $blkno = 1;
+        foreach my $blk (@blks) {
+          #print "blkno=$blkno blk=$blk\n";
+          last if $blk == 0;
+          my @subblks = get_sub_ind_blk($pofile, $blk, $debug);
+          #print "Pushing $blk\n";
+          push @blocks, $blk;
+
+          #foreach my $sblk (@subblks) {
+          #  print "sblk=$sblk\n";
+          #  last if $sblk == 0;
+          #}
+
+          foreach my $subblk (@subblks) {
+            last if $subblk == 0;
+            #print "Pushing $subblk\n";
+            push @blocks, $subblk;
+            last if $blkno++ == $blocks_used - 1;
+          }
+        }
+        return free_blocks($pofile, \@blocks, $debug);
+      } elsif ($file_storage_type == 0xd0) {
+        # Subdirectory.
+##FIXME -- need to delete all blocks in the subdirectory.
+        return free_blocks($pofile, [ $key_pointer ], $debug);
+      } elsif ($file_storage_type == 0xe0) {
+        # Subdirectory Header.
+##FIXME
+        return free_blocks($pofile, [ $key_pointer ], $debug);
+      } elsif ($file_storage_type == 0xf0) {
+        # Volume directory Header.  This should never happen.
+        printf("Can't delete volume directory header \$%02x\n", $header_pointer);
+
+        return 0;
+      } else {
+        # Don't know what the file type is.  This should never happen.
+        printf("Unknown storage type \$%02x\n", $file_storage_type);
+
+        return 0;
+      }
+    } else {
+      printf("Invalid storage type \$%02x\n", $storage_type);
+      return 0;
+    }
+
+    $buf = pack "C*", @bytes;
+
+    dump_blk($buf) if $debug;
+
+##FIXME
+    # Write the directory back out.
+    #if (!write_blk($pofile, $header_pointer, \$buf)) {
+    #  return 0;
+    #} else {
+    #}
+  } else {
+    return 0;
+  }
+
+  return 1;
 }
 
 #
@@ -1547,7 +1722,7 @@ sub lock_file {
 
   print "storage_type=$storage_type file_type=$file_type key_pointer=$key_pointer blocks_used=$blocks_used eof=$eof header_pointer=$header_pointer i=$i\n";
 
-  return if $storage_type == 0;
+  return 0 if $storage_type == 0;
 
   my $buf;
 
@@ -1597,7 +1772,7 @@ sub unlock_file {
 
   print "storage_type=$storage_type file_type=$file_type key_pointer=$key_pointer blocks_used=$blocks_used eof=$eof header_pointer=$header_pointer i=$i\n";
 
-  return if $storage_type == 0;
+  return 0 if $storage_type == 0;
 
   my $buf;
 

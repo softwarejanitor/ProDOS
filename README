@@ -6,7 +6,7 @@ profree.pl -- mostly working
 proread.pl -- partially working
 prowrite.pl -- started
 prorename.pl -- partially working
-prodelete.pl -- started
+prodelete.pl -- nearly working
 prolock.pl -- partially working
 prounlock.pl -- partially working
 procopy.pl -- started
