@@ -1555,6 +1555,28 @@ sub rename_file {
 }
 
 #
+# Reserve a list of used blocks.
+#
+sub reserve_blocks {
+  my ($pofile, $used_blocks, $dbg) = @_;
+
+  $debug = 1 if defined $dbg && $dbg;
+
+  # Get the volume bit map (blocks used/free).
+  my (@bitmaps) = get_vol_bit_map($pofile, $debug);
+
+  # Mark blocks in list as used in the bit map.
+  foreach my $cur_blk (@{$used_blocks}) {
+    #printf("cur_blk=%d byte=%d bit=%d\n", $cur_blk, $cur_blk / 8, $cur_blk % 8);
+    $bitmaps[$cur_blk / 8] &= ~(1 << ($cur_blk % 8));
+    last if $cur_blk == 0;
+  }
+
+  # Now write the volume bit map back out.
+  return write_vol_bit_map($pofile, \@bitmaps, $debug);
+}
+
+#
 # Free a list of blocks.
 #
 sub free_blocks {
