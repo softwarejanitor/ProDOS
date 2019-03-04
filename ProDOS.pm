@@ -1407,12 +1407,17 @@ sub write_vol_bit_map {
   $num_vol_bit_map_blks = 1 if $num_vol_bit_map_blks < 1;
   print sprintf("num_vol_bit_map_blks=%d\n", $num_vol_bit_map_blks);
 
-  my $buf = pack $vol_bit_map_tmpl, @{$bitmaps};
+  # Handle multiple vol bit map blocks
+  for (my $vbmb = 0; $vbmb < $num_vol_bit_map_blks; $vbmb++) {
+    my @bytes = splice @{$bitmaps}, 0, 512;
 
-##FIXME -- need to handle multiple vol bit map blocks here.
-  #if (!write_blk($pofile, $bit_map_pointer, \$buf)) {
-  #  return 0;
-  #}
+    my $buf = pack $vol_bit_map_tmpl, @bytes;
+
+    if (!write_blk($pofile, $bit_map_pointer + $vbmb, \$buf)) {
+      return 0;
+    }
+  }
+
   return 1;
 }
 
@@ -1597,6 +1602,8 @@ sub delete_file {
 
   my $buf;
 
+  my $rv = 1;
+
   if (read_blk($pofile, $header_pointer, \$buf)) {
     dump_blk($buf) if $debug;
     #dump_blk($buf);
@@ -1625,7 +1632,7 @@ sub delete_file {
         return free_blocks($pofile, \@blks, $debug);
       } elsif ($file_storage_type == 0x30) {
         # Tree file.
-##FIXME
+        ##TESTME
         my $buf2;
 
         my @blks = get_master_ind_blk($pofile, $key_pointer, $debug);
@@ -1655,15 +1662,15 @@ sub delete_file {
             last if $blkno++ == $blocks_used - 1;
           }
         }
-        return free_blocks($pofile, \@blocks, $debug);
+        $rv = free_blocks($pofile, \@blocks, $debug);
       } elsif ($file_storage_type == 0xd0) {
         # Subdirectory.
 ##FIXME -- need to delete all blocks in the subdirectory.
-        return free_blocks($pofile, [ $key_pointer ], $debug);
+        $rv = free_blocks($pofile, [ $key_pointer ], $debug);
       } elsif ($file_storage_type == 0xe0) {
         # Subdirectory Header.
 ##FIXME
-        return free_blocks($pofile, [ $key_pointer ], $debug);
+        $rv = free_blocks($pofile, [ $key_pointer ], $debug);
       } elsif ($file_storage_type == 0xf0) {
         # Volume directory Header.  This should never happen.
         printf("Can't delete volume directory header \$%02x\n", $header_pointer);
@@ -1684,17 +1691,15 @@ sub delete_file {
 
     dump_blk($buf) if $debug;
 
-##FIXME
     # Write the directory back out.
-    #if (!write_blk($pofile, $header_pointer, \$buf)) {
-    #  return 0;
-    #} else {
-    #}
+    if (!write_blk($pofile, $header_pointer, \$buf)) {
+      return 0;
+    }
   } else {
     return 0;
   }
 
-  return 1;
+  return $rv;
 }
 
 #
