@@ -1573,6 +1573,8 @@ sub write_file {
   my $numblocks = int($fsize / 512) + (($fsize % 512) ? 1 : 0);
   print "numblocks=$numblocks\n";
 
+  my $blocks_used = $numblocks;
+
   # Get list of free blocks.
   my @free_blocks = get_free_blocks($pofile, $debug);
 
@@ -1600,7 +1602,12 @@ sub write_file {
 
   my $rv = 1;
 
-  my $storage_type = 0x00;
+  my $file_storage_type = 0x00;
+  my $file_type = 0x00;
+##FIXME
+  my $key_pointer = 0x00;
+  my $aux_type = 0x00;
+##FIXME
 
   # Read in the file.
   my $ifh;
@@ -1613,17 +1620,19 @@ sub write_file {
 
     if ($numblocks == 1) {
       # Seedling file.
+      $file_storage_type = 0x10;
 
       # Get a block off the free blocks list.
       my $blknum = pop @free_blocks;
+      $key_pointer = $blknum;
 
       print "blknum=$blknum\n";
 
       # Pack the data for the block.
-      my $buf = pack "C*", @bytes;
+      my $blkbuf = pack "C*", @bytes;
 
       # Write the single block
-      if (!write_blk($pofile, $blknum, \$buf)) {
+      if (!write_blk($pofile, $blknum, \$blkbuf)) {
         print "I/O Error writeing block $blknum\n";
         return 0;
       } else {
@@ -1632,6 +1641,7 @@ sub write_file {
       }
     } elsif ($numblocks <= 256) {
       # Sapling file.
+      $file_storage_type = 0x20;
 
       # Write out the index block.
 ##FIXME
@@ -1644,6 +1654,7 @@ sub write_file {
 ##FIXME
     } else {
       # Tree file.
+      $file_storage_type = 0x30;
 
       # Create the master index block.
 ##FIXME
@@ -1661,8 +1672,119 @@ sub write_file {
 ##FIXME
     }
 
-    # Write the file descriptive entry out.
+    # Read & rewrite the file descriptive entry out.
+    my $dirbuf;
+
+    if (read_blk($pofile, $header_pointer, \$dirbuf)) {
+      dump_blk($dirbuf) if $debug;
+      dump_blk($dirbuf);
+
+      my @bytes = unpack "C*", $dirbuf;
+
+      my $storage_type = $bytes[4] >> 4;
+      #printf("storage_type=\$%02x\n", $storage_type);
+
+      if ($storage_type == 0x0f || $storage_type == 0x0e) {
+        # Fill in STORAGE_TYPE/NAME_LENGTH
+        #printf("file_storage_type=\$%02x\n", $file_storage_type);
+        $file_storage_type &= 0xf0;
+        #printf("file_storage_type=\$%02x\n", $file_storage_type);
+        $file_storage_type |= length($apple_filename);
+        $bytes[0x2b + ($i* 0x27)] = $file_storage_type;
+        #printf("file_storage_type=\$%02x\n", $file_storage_type);
+
+        # Fill in FILE_NAME
+        my $filename_start = 0x2b + ($i * 0x27) + 0x01;
+        #print"filename_start=$filename_start\n";
+        #print "filename='";
+        my $j = 0;
+        for (my $i = $filename_start; $i < ($filename_start + 15); $i++) {
+          #printf("%c", $bytes[$i]);
+          if ($j < length($apple_filename)) {
+            $bytes[$i] = ord(substr($apple_filename, $j++, 1));
+          } else {
+            $bytes[$i] = 0x00;
+          }
+        }
+        #print "'\n";
+        #print "filename='";
+        #for (my $i = $filename_start; $i < ($filename_start + 15); $i++) {
+        #  printf("%c", $bytes[$i]);
+        #}
+        #print "'\n";
+
+        # Fill in FILE_TYPE
+        $bytes[0x2b + ($i * 0x27) + 0x10] = $file_type;
+
+        # Fill in LO byte of KEY_POINTER
+        $bytes[0x2b + ($i * 0x27) + 0x11] = $key_pointer & 0x00ff;
+        # Fill in HI byte of KEY_POINTER
+        $bytes[0x2b + ($i * 0x27) + 0x12] = (($key_pointer & 0xff00) >> 8);
+
+        # Fill in LO byte of BLOCKS_USED
+        $bytes[0x2b + ($i * 0x27) + 0x13] = $blocks_used & 0x00ff;
+        # Fill in HI byte of BLOCKS_USED
+        $bytes[0x2b + ($i * 0x27) + 0x14] = (($blocks_used & 0xff00) >> 8);
+
+        # Fill in EOF
+        $bytes[0x2b + ($i * 0x27) + 0x15] = 0x00;
+        $bytes[0x2b + ($i * 0x27) + 0x16] = 0x00;
+        $bytes[0x2b + ($i * 0x27) + 0x17] = 0x00;
 ##FIXME
+
+        # Fill in CREATION
+        $bytes[0x2b + ($i * 0x27) + 0x18] = 0x00;
+        $bytes[0x2b + ($i * 0x27) + 0x19] = 0x00;
+        $bytes[0x2b + ($i * 0x27) + 0x1a] = 0x00;
+        $bytes[0x2b + ($i * 0x27) + 0x1b] = 0x00;
+##FIXME
+
+        # Fill in VERSION
+        $bytes[0x2b + ($i * 0x27) + 0x1c] = 0x00;
+
+        # Fill in MIN_VERSION
+        $bytes[0x2b + ($i * 0x27) + 0x1d] = 0x00;
+
+        # Fill in ACCESS
+        $bytes[0x2b + ($i * 0x27) + 0x1e] = 0xc3;
+
+        # Fill in LO byte of AUX_TYPE
+        $bytes[0x2b + ($i * 0x27) + 0x1f] = $aux_type & 0x00ff;
+        # Fill in HI byte of AUX_TYPR
+        $bytes[0x2b + ($i * 0x27) + 0x20] = (($aux_type & 0xff00) >> 8);
+##FIXME
+
+        # Fill in LAST_MOD
+        $bytes[0x2b + ($i * 0x27) + 0x21] = 0x00;
+        $bytes[0x2b + ($i * 0x27) + 0x22] = 0x00;
+        $bytes[0x2b + ($i * 0x27) + 0x23] = 0x00;
+        $bytes[0x2b + ($i * 0x27) + 0x24] = 0x00;
+##FIXME
+
+        # Fill in LO byte of HEADER_POINTER
+        $bytes[0x2b + ($i * 0x27) + 0x25] = $header_pointer & 0x00ff;
+        # Fill in HI byte of HEADER_POINTER
+        $bytes[0x2b + ($i * 0x27) + 0x26] = (($header_pointer & 0xff00) >> 8);
+      } else {
+        printf("Invalid storage type \$%02x\n", $storage_type);
+        return 0;
+      }
+
+      $dirbuf = pack "C*", @bytes;
+
+      dump_blk($dirbuf) if $debug;
+      dump_blk($dirbuf);
+
+      if (!write_blk($pofile, $header_pointer, \$dirbuf)) {
+        print "I/O Error\n";
+##FIXME
+        return 0;
+      }
+    } else {
+      print "I/O Error\n";
+##FIXME
+      return 0;
+    }
 
     # Mark blocks as used.
     $rv = reserve_blocks($pofile, \@used_blocks, $debug);
