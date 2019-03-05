@@ -1433,9 +1433,6 @@ sub freespace {
 
   my $free_blocks = 0;
   foreach my $byte (@blocks) {
-    my $bits = sprintf("%08b", $byte);
-    $bits =~ s/[0]/\*/g;
-    $bits =~ s/[1]/ /g;
     $free_blocks += $ones_count{($byte >> 4) & 0x0f};  # Blocks 7654
     $free_blocks += $ones_count{$byte & 0x0f};  # Blocks 3210
   }
@@ -1472,6 +1469,40 @@ sub freemap {
 }
 
 #
+# Get list of free blocks
+#
+sub get_free_blocks {
+  my ($pofile, $dbg) = @_;
+
+  $debug = 1 if defined $dbg && $dbg;
+
+  my (@blocks) = get_vol_bit_map($pofile, $debug);
+
+  my @free_blocks = ();
+
+  my $block = 0;
+  foreach my $byte (@blocks) {
+    for (my $bit = 0; $bit < 8; $bit++) {
+      if ($byte & (1 << $bit)) {
+        push @free_blocks, $block;
+      }
+      $block++;
+    }
+  }
+
+  #print "Free blocks=\n";
+  #my $blkno = 0;
+  #foreach my $blk (@free_blocks) {
+  #  print "\n" if !($blkno % 16);
+  #  printf("%04x ", $blk);
+  #  $blkno++;
+  #}
+  #print "\n";
+
+  return @free_blocks;
+}
+
+#
 # Write a file
 #
 sub write_file {
@@ -1487,8 +1518,18 @@ sub write_file {
   my $fsize = -s $filename;
   print "fsize=$fsize\n";
 
-  my $numblocks = $fsize / 512 + (($fsize % 512) ? 1 : 0);
+  my $numblocks = int($fsize / 512) + (($fsize % 512) ? 1 : 0);
   print "numblocks=$numblocks\n";
+
+  # Get list of free blocks.
+  my @free_blocks = get_free_blocks($pofile, $debug);
+
+  my $free_count = scalar @free_blocks;
+
+  if ($free_count < $numblocks) {
+    print "Not enough space on volume, $free_count free blocks, need $numblocks\n";
+    return 0;
+  }
 
   # Find an empty file descriptive entry in the proper subdirectory.
   # May need to add a subdirectory block if the directory is full.
@@ -1504,21 +1545,15 @@ sub write_file {
     if ($numblocks == 1) {
       # Seedling file.
 
-      # Get the block to use.
-
       # Write the single block
     } elsif ($numblocks <= 256) {
       # Sapling file.
-
-      # Get the list of blocks to use.
 
       # Write out the index block.
 
       # Write out the data blocks.
     } else {
       # Tree file.
-
-      # Get the list of blocks to use.
 
       # Create the master index block.
 
