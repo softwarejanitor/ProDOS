@@ -1480,6 +1480,57 @@ sub write_file {
   $debug = 1 if defined $dbg && $dbg;
 
   print "pofile=$pofile filename=$filename mode=$mode conv=$conv apple_filename=$apple_filename\n" if $debug;
+
+  return 0 if ! -e $filename;
+
+  # Get size of input file
+  my $fsize = -s $filename;
+  print "fsize=$fsize\n";
+
+  my $numblocks = $fsize / 512 + (($fsize % 512) ? 1 : 0);
+  print "numblocks=$numblocks\n";
+
+  # Find an empty file descriptive entry in the proper subdirectory.
+  # May need to add a subdirectory block if the directory is full.
+
+  # Read in the file.
+  my $ifh;
+  my $file_buffer;
+  if (open($ifh, "<$filename")) {
+    my $file_buffer = <$ifh>;
+
+    my @bytes = unpack "C*", $file_buffer;
+
+    if ($numblocks == 1) {
+      # Seedling file.
+
+      # Get the block to use.
+
+      # Write the single block
+    } elsif ($numblocks <= 256) {
+      # Sapling file.
+
+      # Get the list of blocks to use.
+
+      # Write out the index block.
+
+      # Write out the data blocks.
+    } else {
+      # Tree file.
+
+      # Get the list of blocks to use.
+
+      # Create the master index block.
+
+      # Create the subindex blocks.
+
+      # Write out the data blocks.
+    }
+  } else {
+    return 0;
+  }
+
+  return 1;
 }
 
 #
