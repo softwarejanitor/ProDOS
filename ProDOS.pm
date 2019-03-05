@@ -1598,6 +1598,10 @@ sub write_file {
   # May need to add a subdirectory block if the directory is full.
 ##FIXME
 
+  my $rv = 1;
+
+  my $storage_type = 0x00;
+
   # Read in the file.
   my $ifh;
   my $file_buffer;
@@ -1610,8 +1614,22 @@ sub write_file {
     if ($numblocks == 1) {
       # Seedling file.
 
+      # Get a block off the free blocks list.
+      my $blknum = pop @free_blocks;
+
+      print "blknum=$blknum\n";
+
+      # Pack the data for the block.
+      my $buf = pack "C*", @bytes;
+
       # Write the single block
-##FIXME
+      if (!write_blk($pofile, $blknum, \$buf)) {
+        print "I/O Error writeing block $blknum\n";
+        return 0;
+      } else {
+        # Add the block to the used blocks.
+        push @used_blocks, $blknum;
+      }
     } elsif ($numblocks <= 256) {
       # Sapling file.
 
@@ -1642,8 +1660,12 @@ sub write_file {
       # Add each block to used blocks list.
 ##FIXME
     }
+
+    # Write the file descriptive entry out.
+##FIXME
+
     # Mark blocks as used.
-    reserve_blocks($pofile, \@used_blocks, $debug);
+    $rv = reserve_blocks($pofile, \@used_blocks, $debug);
   } else {
     return 0;
   }
