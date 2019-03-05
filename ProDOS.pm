@@ -1532,11 +1532,14 @@ sub write_file {
   }
 
   # Find an empty file descriptive entry in the proper subdirectory.
+##FIXME
   # May need to add a subdirectory block if the directory is full.
+##FIXME
 
   # Read in the file.
   my $ifh;
   my $file_buffer;
+  my @used_blocks = ();
   if (open($ifh, "<$filename")) {
     my $file_buffer = <$ifh>;
 
@@ -1546,21 +1549,39 @@ sub write_file {
       # Seedling file.
 
       # Write the single block
+##FIXME
     } elsif ($numblocks <= 256) {
       # Sapling file.
 
       # Write out the index block.
+##FIXME
+      # Add index block to used blocks
+##FIXME
 
       # Write out the data blocks.
+##FIXME
+      # Add each block to used blocks list.
+##FIXME
     } else {
       # Tree file.
 
       # Create the master index block.
+##FIXME
+      # Add master index block to used blocks
+##FIXME
 
       # Create the subindex blocks.
+##FIXME
+      # Add each subindex block to used blocks
+##FIXME
 
       # Write out the data blocks.
+##FIXME
+      # Add each block to used blocks list.
+##FIXME
     }
+    # Mark blocks as used.
+    reserve_blocks($pofile, \@used_blocks, $debug);
   } else {
     return 0;
   }
