@@ -2151,5 +2151,18 @@ sub unlock_file {
   return 1;
 }
 
+#
+# Create a subdirectory.
+#
+sub create_subdir {
+  my ($pofile, $subdirname, $dbg) = @_;
+
+  $debug = 1 if defined $dbg && $dbg;
+
+  print "pofile=$pofile subdirname=$subdirname\n" if $debug;
+
+  return 1;
+}
+
 1;
 
