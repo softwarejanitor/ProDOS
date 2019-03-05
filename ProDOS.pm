@@ -44,7 +44,7 @@ my %ones_count = (
 my %ftype = (
   # $0x Types: General
 
-  # 00        Typeless file
+  # 00    Typeless file
   0x00 => '   ',
   # 01    BAD Bad block(s) file
   0x01 => 'BAD',
@@ -1028,6 +1028,21 @@ sub get_ind_blk {
 }
 
 #
+# Find empty file descriptive entry slot.
+#
+sub find_empty_fdescent {
+  my ($pofile, $subdir, $dbg) = @_;
+
+  if (! defined $subdir || $subdir eq '') {
+    # Must find a slot in the master directory.
+    print "Master directory\n";
+  } else {
+    # If subdir not found then bag out.
+    print "Subdirectory $subdir\n";
+  }
+}
+
+#
 # Find a file
 #
 sub find_file {
@@ -1531,7 +1546,16 @@ sub write_file {
     return 0;
   }
 
+  my $subdir = '';
+  my $apple_fname = $apple_filename;
+  if ($apple_filename =~ /^[\/]*([^\/]+)\/(\S+)$/) {
+    $subdir = $1;
+    $apple_fname = $2;
+  }
+  print "subdir=$subdir apple_fname=$apple_fname\n";
+
   # Find an empty file descriptive entry in the proper subdirectory.
+  find_empty_fdescent($pofile, $subdir, $debug);
 ##FIXME
   # May need to add a subdirectory block if the directory is full.
 ##FIXME
