@@ -585,7 +585,7 @@ sub date_convert {
 
 # Parse Key Volume Directory Block
 sub parse_key_vol_dir_blk {
-  my ($buf, $dbg) = @_;
+  my ($buf, $mode, $dbg) = @_;
 
   $debug = 1 if defined $dbg && $dbg;
 
@@ -630,8 +630,19 @@ sub parse_key_vol_dir_blk {
       my $f_type = $ftype{$file_type};
       $f_type = sprintf("\$%02x", $file_type) unless defined $f_type;
       push @files, { 'prv' => $prv_vol_dir_blk, 'nxt' => $nxt_vol_dir_blk, 'filename' => $fname, 'ftype' => $f_type, 'used' => $blocks_used, 'mdate' => $mdate, 'cdate' => $cdate, 'atype' => $aux_type, 'atype' => $atype, 'access' => $access, 'eof' => $endfile, 'keyptr' => $key_pointer, 'storage_type' => $storage_type, 'header_pointer' => $header_pointer, 'i' => $i };
+    } else {
+      if ($mode == 2) {
+        push @files, { 'storage_type' => 0, 'header_pointer' => $header_pointer, 'i' => $i };
+      }
     }
   }
+
+  #if ($mode == 2) {
+  #  foreach my $file (@files) {
+  #    next if $file->{'storage_type'} != 0;
+  #    print "file=$file->{'header_pointer'} $file->{'i'}\n";
+  #  }
+  #}
 
   return $prv_vol_dir_blk, $nxt_vol_dir_blk, $storage_type_name_length, $volname, $creation_ymd, $creation_hm, $version, $min_version, $access, $entry_length, $entries_per_block, $file_count, $bit_map_pointer, $total_blocks, @files;
 }
@@ -640,7 +651,7 @@ sub parse_key_vol_dir_blk {
 # Get Key Volume Directory Block
 #
 sub get_key_vol_dir_blk {
-  my ($pofile, $dbg) = @_;
+  my ($pofile, $mode, $dbg) = @_;
 
   $debug = 1 if defined $dbg && $dbg;
 
@@ -648,7 +659,7 @@ sub get_key_vol_dir_blk {
 
   if (read_blk($pofile, $key_vol_dir_blk, \$buf)) {
     dump_blk($buf) if $debug;
-    return parse_key_vol_dir_blk($buf, $debug);
+    return parse_key_vol_dir_blk($buf, $mode, $debug);
   }
 
   return 0;
@@ -656,7 +667,7 @@ sub get_key_vol_dir_blk {
 
 # Parse Volume Directory Block
 sub parse_vol_dir_blk {
-  my ($buf, $dbg) = @_;
+  my ($buf, $mode, $dbg) = @_;
 
   $debug = 1 if defined $dbg && $dbg;
 
@@ -696,6 +707,10 @@ sub parse_vol_dir_blk {
       my $f_type = $ftype{$file_type};
       $f_type = sprintf("\$%02x", $file_type) unless defined $f_type;
       push @files, { 'prv' => $prv_vol_dir_blk, 'nxt' => $nxt_vol_dir_blk, 'filename' => $fname, 'ftype' => $f_type, 'used' => $blocks_used, 'mdate' => $mdate, 'cdate' => $cdate, 'atype' => $aux_type, 'atype' => $atype, 'access' => $access, 'eof' => $endfile, 'keyptr' => $key_pointer, 'storage_type' => $storage_type, 'header_pointer' => $header_pointer, 'i' => $i };
+    } else {
+      if ($mode == 2) {
+        push @files, { 'header_pointer' => $header_pointer, 'i' => $i };
+      }
     }
   }
 
@@ -706,7 +721,7 @@ sub parse_vol_dir_blk {
 # Get Volume Directory Block
 #
 sub get_vol_dir_blk {
-  my ($pofile, $vol_dir_blk, $dbg) = @_;
+  my ($pofile, $vol_dir_blk, $mode, $dbg) = @_;
 
   $debug = 1 if defined $dbg && $dbg;
 
@@ -714,7 +729,7 @@ sub get_vol_dir_blk {
 
   if (read_blk($pofile, $vol_dir_blk, \$buf)) {
     dump_blk($buf) if $debug;
-    return parse_vol_dir_blk($buf, $debug);
+    return parse_vol_dir_blk($buf, $mode, $debug);
   }
 
   return 0;
@@ -722,7 +737,7 @@ sub get_vol_dir_blk {
 
 # Parse Key Volume Directory Block
 sub parse_subdir_hdr_blk {
-  my ($buf, $dbg) = @_;
+  my ($buf, $mode, $dbg) = @_;
 
   $debug = 1 if defined $dbg && $dbg;
 
@@ -772,6 +787,10 @@ sub parse_subdir_hdr_blk {
       my $f_type = $ftype{$file_type};
       $f_type = sprintf("\$%02x", $file_type) unless defined $f_type;
       push @files, { 'prv' => $prv_vol_dir_blk, 'nxt' => $nxt_vol_dir_blk, 'filename' => $fname, 'ftype' => $f_type, 'used' => $blocks_used, 'mdate' => $mdate, 'cdate' => $cdate, 'atype' => $aux_type, 'atype' => $atype, 'access' => $access, 'eof' => $endfile, 'keyptr' => $key_pointer, 'storage_type' => $storage_type, 'header_pointer' => $header_pointer, 'i' => $i };
+    } else {
+      if ($mode == 2) {
+      push @files, { 'header_pointer' => $header_pointer, 'i' => $i };
+      }
     }
   }
 
@@ -779,7 +798,7 @@ sub parse_subdir_hdr_blk {
 }
 
 sub get_subdir_hdr {
-  my ($pofile, $subdir_blk, $dbg) = @_;
+  my ($pofile, $subdir_blk, $mode, $dbg) = @_;
 
   $debug = 1 if defined $dbg && $dbg;
 
@@ -787,7 +806,7 @@ sub get_subdir_hdr {
 
   if (read_blk($pofile, $subdir_blk, \$buf)) {
     dump_blk($buf) if $debug;
-    return parse_subdir_hdr_blk($buf, $debug);
+    return parse_subdir_hdr_blk($buf, $mode, $debug);
   }
 
   return 0;
@@ -808,7 +827,7 @@ sub list_files {
     if ($file->{'ftype'} eq 'DIR') {
       my $subdir_blk = $file->{'keyptr'};
 
-      my ($prv_vol_dir_blk, $nxt_vol_dir_blk, $storage_type_name_length, $subdir_name, $creation_ymd, $creation_hm, $version, $min_version, $access, $entry_length, $entries_per_block, $file_count, $parent_pointer, $parent_entry, $parent_entry_length, @subfiles) = get_subdir_hdr($pofile, $subdir_blk, $debug);
+      my ($prv_vol_dir_blk, $nxt_vol_dir_blk, $storage_type_name_length, $subdir_name, $creation_ymd, $creation_hm, $version, $min_version, $access, $entry_length, $entries_per_block, $file_count, $parent_pointer, $parent_entry, $parent_entry_length, @subfiles) = get_subdir_hdr($pofile, $subdir_blk, 1, $debug);
 
       list_files($pofile, '  ' . $pre, $subdir_name, \@subfiles);
     }
@@ -823,7 +842,7 @@ sub cat {
 
   $debug = 1 if defined $dbg && $dbg;
 
-  my ($prv_vol_dir_blk, $nxt_vol_dir_blk, $storage_type_name_length, $volume_name, $creation_ymd, $creation_hm, $version, $min_version, $access, $entry_length, $entries_per_block, $file_count, $bit_map_pointer, $total_blocks, @files) = get_key_vol_dir_blk($pofile, $debug);
+  my ($prv_vol_dir_blk, $nxt_vol_dir_blk, $storage_type_name_length, $volume_name, $creation_ymd, $creation_hm, $version, $min_version, $access, $entry_length, $entries_per_block, $file_count, $bit_map_pointer, $total_blocks, @files) = get_key_vol_dir_blk($pofile, 1, $debug);
 
   print "/$volume_name\n\n";
 
@@ -839,7 +858,7 @@ sub cat {
     if ($file->{'ftype'} eq 'DIR') {
       my $subdir_blk = $file->{'keyptr'};
 
-      my ($prv_vol_dir_blk, $nxt_vol_dir_blk, $storage_type_name_length, $subdir_name, $creation_ymd, $creation_hm, $version, $min_version, $access, $entry_length, $entries_per_block, $file_count, $parent_pointer, $parent_entry, $parent_entry_length, @subfiles) = get_subdir_hdr($pofile, $subdir_blk, $debug);
+      my ($prv_vol_dir_blk, $nxt_vol_dir_blk, $storage_type_name_length, $subdir_name, $creation_ymd, $creation_hm, $version, $min_version, $access, $entry_length, $entries_per_block, $file_count, $parent_pointer, $parent_entry, $parent_entry_length, @subfiles) = get_subdir_hdr($pofile, $subdir_blk, 1, $debug);
       my $pre = '  ';
       list_files($pofile, '  ' . $pre, $subdir_name, \@subfiles);
     }
@@ -848,7 +867,7 @@ sub cat {
   my $vol_dir_blk = $nxt_vol_dir_blk;
 
   while ($vol_dir_blk) {
-    my ($prv_vol_dir_blk, $nxt_vol_dir_blk, @files) = get_vol_dir_blk($pofile, $vol_dir_blk, $debug);
+    my ($prv_vol_dir_blk, $nxt_vol_dir_blk, @files) = get_vol_dir_blk($pofile, $vol_dir_blk, 1, $debug);
     foreach my $file (@files) {
       my $lck = ' ';
       if ($file->{'access'} == 0x01) {
@@ -859,7 +878,7 @@ sub cat {
       if ($file->{'ftype'} eq 'DIR') {
         my $subdir_blk = $file->{'keyptr'};
 
-        my ($prv_vol_dir_blk, $nxt_vol_dir_blk, $storage_type_name_length, $subdir_name, $creation_ymd, $creation_hm, $version, $min_version, $access, $entry_length, $entries_per_block, $file_count, $parent_pointer, $parent_entry, $parent_entry_length, @subfiles) = get_subdir_hdr($pofile, $subdir_blk, $debug);
+        my ($prv_vol_dir_blk, $nxt_vol_dir_blk, $storage_type_name_length, $subdir_name, $creation_ymd, $creation_hm, $version, $min_version, $access, $entry_length, $entries_per_block, $file_count, $parent_pointer, $parent_entry, $parent_entry_length, @subfiles) = get_subdir_hdr($pofile, $subdir_blk, 1, $debug);
 
         my $pre = '  ';
         list_files($pofile, '  ' . $pre, $subdir_name, \@subfiles);
@@ -1033,13 +1052,31 @@ sub get_ind_blk {
 sub find_empty_fdescent {
   my ($pofile, $subdir, $dbg) = @_;
 
+  my ($prv_vol_dir_blk, $nxt_vol_dir_blk, $storage_type_name_length, $volume_name, $creation_ymd, $creation_hm, $version, $min_version, $access, $entry_length, $entries_per_block, $file_count, $bit_map_pointer, $total_blocks, @files) = get_key_vol_dir_blk($pofile, 2, $debug);
+
   if (! defined $subdir || $subdir eq '') {
     # Must find a slot in the master directory.
     print "Master directory\n";
+    my $found_it = 0;
+    foreach my $file (@files) {
+      next if ! defined $file->{'header_pointer'} || $file->{'header_pointer'} eq '';
+      next if ($file->{'storage_type'} != 0);
+      $found_it = 1;
+print "Found empty slot $file->{'i'}\n";
+      return $file->{'header_pointer'}, $file->{'i'};
+    }
+
+    print "No space in master directory\n";
+##FIXME
   } else {
     # If subdir not found then bag out.
     print "Subdirectory $subdir\n";
+##FIXME
   }
+
+  print "No directory space available\n";
+
+  return 0, 0;
 }
 
 #
@@ -1070,7 +1107,7 @@ sub find_file {
     $fname = $2;
   }
 
-  my ($prv_vol_dir_blk, $nxt_vol_dir_blk, $storage_type_name_length, $volume_name, $creation_ymd, $creation_hm, $version, $min_version, $access, $entry_length, $entries_per_block, $file_count, $bit_map_pointer, $total_blocks, @files) = get_key_vol_dir_blk($pofile, $debug);
+  my ($prv_vol_dir_blk, $nxt_vol_dir_blk, $storage_type_name_length, $volume_name, $creation_ymd, $creation_hm, $version, $min_version, $access, $entry_length, $entries_per_block, $file_count, $bit_map_pointer, $total_blocks, @files) = get_key_vol_dir_blk($pofile, 1, $debug);
 
   my $found_it = 0;
   foreach my $file (@files) {
@@ -1101,7 +1138,7 @@ sub find_file {
         $file_index = $file->{'i'};
 
         # Now read the subdir(s) and look for the file.
-        my ($prv_vol_dir_blk, $nxt_vol_dir_blk, $storage_type_name_length, $subdir_name, $creation_ymd, $creation_hm, $version, $min_version, $access, $entry_length, $entries_per_block, $file_count, $parent_pointer, $parent_entry, $parent_entry_length, @subfiles) = get_subdir_hdr($pofile, $key_pointer, $debug);
+        my ($prv_vol_dir_blk, $nxt_vol_dir_blk, $storage_type_name_length, $subdir_name, $creation_ymd, $creation_hm, $version, $min_version, $access, $entry_length, $entries_per_block, $file_count, $parent_pointer, $parent_entry, $parent_entry_length, @subfiles) = get_subdir_hdr($pofile, $key_pointer, 1, $debug);
 
         foreach my $subfile (@subfiles) {
           #print "filename=$subfile->{'filename'}\n";
@@ -1126,7 +1163,7 @@ sub find_file {
     my $vol_dir_blk = $nxt_vol_dir_blk;
 
     while ($vol_dir_blk) {
-      my ($prv_vol_dir_blk, $nxt_vol_dir_blk, @files) = get_vol_dir_blk($pofile, $vol_dir_blk, $debug);
+      my ($prv_vol_dir_blk, $nxt_vol_dir_blk, @files) = get_vol_dir_blk($pofile, $vol_dir_blk, 1, $debug);
 
       foreach my $file (@files) {
         if ($base_dir eq '') {
@@ -1156,7 +1193,7 @@ sub find_file {
             $file_index = $file->{'i'};
 
             # Now read the subdir(s) and look for the file.
-            my ($prv_vol_dir_blk, $nxt_vol_dir_blk, $storage_type_name_length, $subdir_name, $creation_ymd, $creation_hm, $version, $min_version, $access, $entry_length, $entries_per_block, $file_count, $parent_pointer, $parent_entry, $parent_entry_length, @subfiles) = get_subdir_hdr($pofile, $key_pointer, $debug);
+            my ($prv_vol_dir_blk, $nxt_vol_dir_blk, $storage_type_name_length, $subdir_name, $creation_ymd, $creation_hm, $version, $min_version, $access, $entry_length, $entries_per_block, $file_count, $parent_pointer, $parent_entry, $parent_entry_length, @subfiles) = get_subdir_hdr($pofile, $key_pointer, 1, $debug);
 
             foreach my $subfile (@subfiles) {
               #print "filename=$subfile->{'filename'}\n";
@@ -1368,7 +1405,7 @@ sub get_vol_bit_map {
 
   $debug = 1 if defined $dbg && $dbg;
 
-  my ($prv_vol_dir_blk, $nxt_vol_dir_blk, $storage_type_name_length, $volname, $creation_ymd, $creation_hm, $version, $min_version, $access, $entry_length, $entries_per_block, $file_count, $bit_map_pointer, $total_blocks, @files) = get_key_vol_dir_blk($pofile, $debug);
+  my ($prv_vol_dir_blk, $nxt_vol_dir_blk, $storage_type_name_length, $volname, $creation_ymd, $creation_hm, $version, $min_version, $access, $entry_length, $entries_per_block, $file_count, $bit_map_pointer, $total_blocks, @files) = get_key_vol_dir_blk($pofile, 1, $debug);
 
   my $buf;
 
@@ -1409,7 +1446,7 @@ sub write_vol_bit_map {
 
   $debug = 1 if defined $dbg && $dbg;
 
-  my ($prv_vol_dir_blk, $nxt_vol_dir_blk, $storage_type_name_length, $volname, $creation_ymd, $creation_hm, $version, $min_version, $access, $entry_length, $entries_per_block, $file_count, $bit_map_pointer, $total_blocks, @files) = get_key_vol_dir_blk($pofile, $debug);
+  my ($prv_vol_dir_blk, $nxt_vol_dir_blk, $storage_type_name_length, $volname, $creation_ymd, $creation_hm, $version, $min_version, $access, $entry_length, $entries_per_block, $file_count, $bit_map_pointer, $total_blocks, @files) = get_key_vol_dir_blk($pofile, 1, $debug);
 
   print sprintf("bit_map_pointer=%04x\n", $bit_map_pointer) if $debug;
 
@@ -1555,7 +1592,8 @@ sub write_file {
   print "subdir=$subdir apple_fname=$apple_fname\n";
 
   # Find an empty file descriptive entry in the proper subdirectory.
-  find_empty_fdescent($pofile, $subdir, $debug);
+  my ($header_pointer, $i) = find_empty_fdescent($pofile, $subdir, $debug);
+  printf("header_pointer=\$%04x i=%d\n", $header_pointer, $i);
 ##FIXME
   # May need to add a subdirectory block if the directory is full.
 ##FIXME
