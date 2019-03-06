@@ -626,7 +626,7 @@ sub parse_key_vol_dir_blk {
     my $last_mod_hm = shift @flds;
     my $mdate = date_convert($last_mod_ymd, $last_mod_hm);
     my $header_pointer = shift @flds;
-    if ($storage_type != 0) {
+    if ($storage_type != 0x00) {
       my $f_type = $ftype{$file_type};
       $f_type = sprintf("\$%02x", $file_type) unless defined $f_type;
       push @files, { 'prv' => $prv_vol_dir_blk, 'nxt' => $nxt_vol_dir_blk, 'filename' => $fname, 'ftype' => $f_type, 'used' => $blocks_used, 'mdate' => $mdate, 'cdate' => $cdate, 'atype' => $aux_type, 'atype' => $atype, 'access' => $access, 'eof' => $endfile, 'keyptr' => $key_pointer, 'storage_type' => $storage_type, 'header_pointer' => $header_pointer, 'i' => $i };
@@ -703,7 +703,7 @@ sub parse_vol_dir_blk {
     my $last_mod_hm = shift @flds;
     my $mdate = date_convert($last_mod_ymd, $last_mod_hm);
     my $header_pointer = shift @flds;
-    if ($storage_type != 0) {
+    if ($storage_type != 0x00) {
       my $f_type = $ftype{$file_type};
       $f_type = sprintf("\$%02x", $file_type) unless defined $f_type;
       push @files, { 'prv' => $prv_vol_dir_blk, 'nxt' => $nxt_vol_dir_blk, 'filename' => $fname, 'ftype' => $f_type, 'used' => $blocks_used, 'mdate' => $mdate, 'cdate' => $cdate, 'atype' => $aux_type, 'atype' => $atype, 'access' => $access, 'eof' => $endfile, 'keyptr' => $key_pointer, 'storage_type' => $storage_type, 'header_pointer' => $header_pointer, 'i' => $i };
@@ -754,15 +754,15 @@ sub parse_subdir_hdr_blk {
   for (my $i = 0; $i < 12; $i++) {
     my $storage_type_name_length = shift @flds;
     my $storage_type = ($storage_type_name_length & 0xf0) >> 4;
-    print sprintf("storage_type_name_length=%02x\n", $storage_type_name_length) if $debug;
-    print sprintf("storage_type=%02x\n", $storage_type) if $debug;
+    printf("storage_type_name_length=%02x\n", $storage_type_name_length) if $debug;
+    printf("storage_type=%02x\n", $storage_type) if $debug;
     my $name_length = $storage_type_name_length & 0x0f;
-    print sprintf("name_length=%02x\n", $name_length) if $debug;
+    printf("name_length=%02x\n", $name_length) if $debug;
     my $file_name = shift @flds;
     my $fname = substr($file_name, 0, $name_length);
-    print sprintf("fname=%s\n", $fname) if $debug;
+    printf("fname=%s\n", $fname) if $debug;
     my $file_type = shift @flds;
-    print sprintf("file_type=%02x\n", $file_type) if $debug;
+    printf("file_type=%02x\n", $file_type) if $debug;
     my $key_pointer = shift @flds;
     my $blocks_used = shift @flds;
     my $eof = shift @flds;
@@ -783,13 +783,13 @@ sub parse_subdir_hdr_blk {
     my $last_mod_hm = shift @flds;
     my $mdate = date_convert($last_mod_ymd, $last_mod_hm);
     my $header_pointer = shift @flds;
-    if ($storage_type != 0) {
+    if ($storage_type != 0x00) {
       my $f_type = $ftype{$file_type};
       $f_type = sprintf("\$%02x", $file_type) unless defined $f_type;
       push @files, { 'prv' => $prv_vol_dir_blk, 'nxt' => $nxt_vol_dir_blk, 'filename' => $fname, 'ftype' => $f_type, 'used' => $blocks_used, 'mdate' => $mdate, 'cdate' => $cdate, 'atype' => $aux_type, 'atype' => $atype, 'access' => $access, 'eof' => $endfile, 'keyptr' => $key_pointer, 'storage_type' => $storage_type, 'header_pointer' => $header_pointer, 'i' => $i };
     } else {
       if ($mode == 2) {
-      push @files, { 'header_pointer' => $header_pointer, 'i' => $i };
+        push @files, { 'header_pointer' => $header_pointer, 'i' => $i };
       }
     }
   }
@@ -809,6 +809,8 @@ sub get_subdir_hdr {
     return parse_subdir_hdr_blk($buf, $mode, $debug);
   }
 
+  print "I/O Error reading block $subdir_blk\n";
+
   return 0;
 }
 
@@ -822,7 +824,7 @@ sub list_files {
     if ($file->{'access'} == 0x01) {
       $lck = '*';
     }
-    print sprintf("$pre%s%-15s %3s %7d %16s %16s  %7s %s\n", $lck, $file->{'filename'}, $file->{'ftype'}, $file->{'used'}, $file->{'mdate'}, $file->{'cdate'}, $file->{'eof'}, $file->{'atype'});
+    printf("$pre%s%-15s %3s %7d %16s %16s  %7s %s\n", $lck, $file->{'filename'}, $file->{'ftype'}, $file->{'used'}, $file->{'mdate'}, $file->{'cdate'}, $file->{'eof'}, $file->{'atype'});
 
     if ($file->{'ftype'} eq 'DIR') {
       my $subdir_blk = $file->{'keyptr'};
@@ -853,7 +855,7 @@ sub cat {
     if ($file->{'access'} == 0x01) {
       $lck = '*';
     }
-    print sprintf("%s%-15s %3s %7d %16s %16s  %7s %s\n", $lck, $file->{'filename'}, $file->{'ftype'}, $file->{'used'}, $file->{'mdate'}, $file->{'cdate'}, $file->{'eof'}, $file->{'atype'});
+    printf("%s%-15s %3s %7d %16s %16s  %7s %s\n", $lck, $file->{'filename'}, $file->{'ftype'}, $file->{'used'}, $file->{'mdate'}, $file->{'cdate'}, $file->{'eof'}, $file->{'atype'});
 
     if ($file->{'ftype'} eq 'DIR') {
       my $subdir_blk = $file->{'keyptr'};
@@ -873,7 +875,7 @@ sub cat {
       if ($file->{'access'} == 0x01) {
         $lck = '*';
       }
-      print sprintf("%s%-15s %3s %7d %16s %16s  %7s %s\n", $lck, $file->{'filename'}, $file->{'ftype'}, $file->{'used'}, $file->{'mdate'}, $file->{'cdate'}, $file->{'eof'}, $file->{'atype'});
+      printf("%s%-15s %3s %7d %16s %16s  %7s %s\n", $lck, $file->{'filename'}, $file->{'ftype'}, $file->{'used'}, $file->{'mdate'}, $file->{'cdate'}, $file->{'eof'}, $file->{'atype'});
 
       if ($file->{'ftype'} eq 'DIR') {
         my $subdir_blk = $file->{'keyptr'};
@@ -940,6 +942,8 @@ sub get_master_ind_blk {
 
   if (read_blk($pofile, $master_ind_blk, \$buf)) {
     dump_blk($buf) if $debug;
+  } else {
+    print "I/O Error reading block $master_ind_blk\n";
   }
 
   return parse_master_ind_blk($buf, $debug);
@@ -998,6 +1002,8 @@ sub get_sub_ind_blk {
   if (read_blk($pofile, $sub_ind_blk, \$buf)) {
     dump_blk($buf) if $debug;
     #dump_blk($buf);
+  } else {
+    print "I/O Error reading block $sub_ind_blk\n";
   }
 
   return parse_sub_ind_blk($buf, $debug);
@@ -1019,18 +1025,18 @@ sub get_ind_blk {
     dump_blk($buf) if $debug;
     my @lo = unpack "C256", $buf;
     #foreach my $byte (@lo) {
-    #  print sprintf("%02x ", $byte);
+    #  printf("%02x ", $byte);
     #}
     #print "\n";
     my @hi = unpack "x256C256", $buf;
     #foreach my $byte (@hi) {
-    #  print sprintf("%02x ", $byte);
+    #  printf("%02x ", $byte);
     #}
     #print "\n";
     for (my $b = 0; $b < 256; $b++) {
-      #print sprintf("lo=%02x hi=%02x\n", $lo[$b], $hi[$b]);
+      #printf("lo=%02x hi=%02x\n", $lo[$b], $hi[$b]);
       my $blk = ($hi[$b] << 8) | $lo[$b];
-      #print sprintf("blk=%04x\n", $blk);
+      #printf("blk=%04x\n", $blk);
       push @blocks, $blk;
     }
     #print "blocks=\n";
@@ -1041,6 +1047,8 @@ sub get_ind_blk {
     #  print "\n" if !($x % 16);
     #}
     #print "\n";
+  } else {
+    print "I/O Error reading block $ind_blk\n";
   }
 
   return @blocks;
@@ -1271,9 +1279,11 @@ $debug = 0;
         $byte = 0x0a if $byte == 0x8d && $conv;
         # Convert Apple II ASCII to standard ASCII (clear high bit)
         $byte &= 0x7f if $mode eq 'T' || $text_conv;
-        #print sprintf("%c", $byte & 0x7f);
-        print sprintf("%c", $byte);
+        #printf("%c", $byte & 0x7f);
+        printf("%c", $byte);
       }
+    } else {
+      print "I/O Error reading block $key_pointer\n";
     }
   # Sapling file, 2-256 blocks
   } elsif ($storage_type == 2) {
@@ -1304,6 +1314,8 @@ $debug = 0;
         }
         #print "\n";
         #print "Wrote $x bytes\n";
+      } else {
+        print "I/O Error reading block $blk\n";
       }
       last if $blkno++ == $blocks_used - 1;
     }
@@ -1353,6 +1365,8 @@ $debug = 0;
           }
           #print "\n";
           #print "Wrote $x bytes\n";
+        } else {
+          print "I/O Error reading block $subblk\n";
         }
         last if $blkno++ == $blocks_used - 1;
       }
@@ -1377,8 +1391,8 @@ sub parse_vol_bit_map {
   my (@bytes) = unpack $vol_bit_map_tmpl, $buf;
 
   foreach my $byte (@bytes) {
-    #print sprintf("%02x ", $byte);
-    #print sprintf("%08b ", $byte);
+    #printf("%02x ", $byte);
+    #printf("%08b ", $byte);
     push @blocks, $byte;
   }
   print "\n";
@@ -1409,16 +1423,16 @@ sub get_vol_bit_map {
 
   my $buf;
 
-  #print sprintf("bit_map_pointer=%04x\n", $bit_map_pointer) if $debug;
+  #printf("bit_map_pointer=%04x\n", $bit_map_pointer) if $debug;
 
   # Need to use total_blocks to calculate the number of volume bit map blocks.
-  #print sprintf("total_blocks=\$%04x\n", $total_blocks);
+  #printf("total_blocks=\$%04x\n", $total_blocks);
   my $num_tracks = $total_blocks / 8;
-  #print sprintf("num_tracks=%d\n", $num_tracks);
+  #printf("num_tracks=%d\n", $num_tracks);
   my $num_vol_bit_map_blks = ceil($num_tracks / 512.0);
-  #print sprintf("num_vol_bit_map_blks=%d\n", $num_vol_bit_map_blks);
+  #printf("num_vol_bit_map_blks=%d\n", $num_vol_bit_map_blks);
   $num_vol_bit_map_blks = 1 if $num_vol_bit_map_blks < 1;
-  #print sprintf("num_vol_bit_map_blks=%d\n", $num_vol_bit_map_blks);
+  #printf("num_vol_bit_map_blks=%d\n", $num_vol_bit_map_blks);
 
   my @blocks = ();
 
@@ -1431,10 +1445,12 @@ sub get_vol_bit_map {
       foreach my $blk (@blks) {
         #print "trk=$trk blk=$blk\n";
         last if $trk++ >= $num_tracks;
-        #print sprintf("%02x ", $blk);
+        #printf("%02x ", $blk);
         push @blocks, $blk;
       }
       #print "\n";
+    } else {
+      print "I/O Error reading block $bit_map_pointer\n";
     }
   }
 
@@ -1446,18 +1462,20 @@ sub write_vol_bit_map {
 
   $debug = 1 if defined $dbg && $dbg;
 
+  #print "in write_vol_bit map\n";
+
   my ($prv_vol_dir_blk, $nxt_vol_dir_blk, $storage_type_name_length, $volname, $creation_ymd, $creation_hm, $version, $min_version, $access, $entry_length, $entries_per_block, $file_count, $bit_map_pointer, $total_blocks, @files) = get_key_vol_dir_blk($pofile, 1, $debug);
 
-  print sprintf("bit_map_pointer=%04x\n", $bit_map_pointer) if $debug;
+  printf("bit_map_pointer=%04x\n", $bit_map_pointer) if $debug;
 
   # Need to use total_blocks to calculate the number of volume bit map blocks.
-  print sprintf("total_blocks=\$%04x\n", $total_blocks);
+  #printf("total_blocks=\$%04x\n", $total_blocks);
   my $num_tracks = $total_blocks / 8;
-  print sprintf("num_tracks=%d\n", $num_tracks);
+  #printf("num_tracks=%d\n", $num_tracks);
   my $num_vol_bit_map_blks = ceil($num_tracks / 512.0);
-  print sprintf("num_vol_bit_map_blks=%d\n", $num_vol_bit_map_blks);
+  #printf("num_vol_bit_map_blks=%d\n", $num_vol_bit_map_blks);
   $num_vol_bit_map_blks = 1 if $num_vol_bit_map_blks < 1;
-  print sprintf("num_vol_bit_map_blks=%d\n", $num_vol_bit_map_blks);
+  #printf("num_vol_bit_map_blks=%d\n", $num_vol_bit_map_blks);
 
   # Handle multiple vol bit map blocks
   for (my $vbmb = 0; $vbmb < $num_vol_bit_map_blks; $vbmb++) {
@@ -1466,6 +1484,7 @@ sub write_vol_bit_map {
     my $buf = pack $vol_bit_map_tmpl, @bytes;
 
     if (!write_blk($pofile, $bit_map_pointer + $vbmb, \$buf)) {
+      print "I/O Error writing block " . ($bit_map_pointer + $vbmb) . "\n";
       return 0;
     }
   }
@@ -1513,7 +1532,7 @@ sub freemap {
     my $bits = sprintf("%08b", $byte);
     $bits =~ s/[0]/\*/g;
     $bits =~ s/[1]/ /g;
-    print sprintf("%2d |%s\n", $trk++, $bits);
+    printf("%2d |%s\n", $trk++, $bits);
     $free_blocks += $ones_count{($byte >> 4) & 0x0f};  # Blocks 7654
     $free_blocks += $ones_count{$byte & 0x0f};  # Blocks 3210
   }
@@ -1778,12 +1797,12 @@ sub write_file {
       dump_blk($dirbuf);
 
       if (!write_blk($pofile, $header_pointer, \$dirbuf)) {
-        print "I/O Error\n";
+        print "I/O Error writing block $header_pointer\n";
 ##FIXME
         return 0;
       }
     } else {
-      print "I/O Error\n";
+      print "I/O Error reading block $header_pointer\n";
 ##FIXME
       return 0;
     }
@@ -1860,9 +1879,11 @@ sub rename_file {
     dump_blk($buf) if $debug;
 
     if (!write_blk($pofile, $header_pointer, \$buf)) {
+      print "I/O Error writing block $header_pointer\n";
       return 0;
     }
   } else {
+    print "I/O Error reading block $header_pointer\n";
     return 0;
   }
 
@@ -1894,7 +1915,7 @@ sub reserve_blocks {
 #
 # Free a list of blocks.
 #
-sub free_blocks {
+sub release_blocks {
   my ($pofile, $free_blocks, $dbg) = @_;
 
   $debug = 1 if defined $dbg && $dbg;
@@ -1961,12 +1982,12 @@ sub delete_file {
       # Now free all the blocks
       if ($file_storage_type == 0x10) {
         # Seedling file.
-        return free_blocks($pofile, [ $key_pointer ], $debug );
+        $rv = release_blocks($pofile, [ $key_pointer ], $debug );
       } elsif ($file_storage_type == 0x20) {
         # Sapling file.
         my @blks = get_ind_blk($pofile, $key_pointer, $debug);
 
-        return free_blocks($pofile, \@blks, $debug);
+        $rv = release_blocks($pofile, \@blks, $debug);
       } elsif ($file_storage_type == 0x30) {
         # Tree file.
         ##TESTME
@@ -1999,15 +2020,15 @@ sub delete_file {
             last if $blkno++ == $blocks_used - 1;
           }
         }
-        $rv = free_blocks($pofile, \@blocks, $debug);
+        $rv = release_blocks($pofile, \@blocks, $debug);
       } elsif ($file_storage_type == 0xd0) {
         # Subdirectory.
 ##FIXME -- need to delete all blocks in the subdirectory.
-        $rv = free_blocks($pofile, [ $key_pointer ], $debug);
+        $rv = release_blocks($pofile, [ $key_pointer ], $debug);
       } elsif ($file_storage_type == 0xe0) {
         # Subdirectory Header.
 ##FIXME
-        $rv = free_blocks($pofile, [ $key_pointer ], $debug);
+        $rv = release_blocks($pofile, [ $key_pointer ], $debug);
       } elsif ($file_storage_type == 0xf0) {
         # Volume directory Header.  This should never happen.
         printf("Can't delete volume directory header \$%02x\n", $header_pointer);
@@ -2027,7 +2048,7 @@ sub delete_file {
     $buf = pack "C*", @bytes;
 
     #dump_blk($buf) if $debug;
-    dump_blk($buf) if $debug;
+    dump_blk($buf);
 
     # Write the directory back out.
     if (!write_blk($pofile, $header_pointer, \$buf)) {
@@ -2096,9 +2117,11 @@ sub lock_file {
     $buf = pack "C*", @bytes;
 
     if (!write_blk($pofile, $header_pointer, \$buf)) {
+      print "I/O Error writing block $header_pointer\n";
       return 0;
     }
   } else {
+    print "I/O Error reading block $header_pointer\n";
     return 0;
   }
 
@@ -2149,9 +2172,11 @@ sub unlock_file {
     $buf = pack "C*", @bytes;
 
     if (!write_blk($pofile, $header_pointer, \$buf)) {
+      print "I/O Error writing block $header_pointer\n";
       return 0;
     }
   } else {
+    print "I/O Error reading block $header_pointer\n";
     return 0;
   }
 
