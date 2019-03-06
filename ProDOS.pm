@@ -1675,6 +1675,8 @@ sub write_file {
     # Read & rewrite the file descriptive entry out.
     my $dirbuf;
 
+    $header_pointer = 2 if $header_pointer == 0;
+
     if (read_blk($pofile, $header_pointer, \$dirbuf)) {
       dump_blk($dirbuf) if $debug;
       dump_blk($dirbuf);
@@ -1949,12 +1951,12 @@ sub delete_file {
     #printf("storage_type=\$%02x\n", $storage_type);
 
     if ($storage_type == 0x0f || $storage_type == 0x0e) {
-      my $file_storage_type = $bytes[0x2b + ($i* 0x27)];
-      #printf("file_storage_type=\$%02x\n", $file_storage_type);
+      my $file_storage_type = $bytes[0x2b + ($i * 0x27)];
+      printf("file_storage_type=\$%02x\n", $file_storage_type);
       $file_storage_type &= 0xf0;
-      #printf("file_storage_type=\$%02x\n", $file_storage_type);
-      $bytes[0x2b + ($i* 0x27)] = 0x00;
-      #printf("file_storage_type=\$%02x\n", $file_storage_type);
+      printf("file_storage_type=\$%02x\n", $file_storage_type);
+      $bytes[0x2b + ($i * 0x27)] = 0x00;
+      printf("file_storage_type=\$%02x\n", $file_storage_type);
 
       # Now free all the blocks
       if ($file_storage_type == 0x10) {
@@ -2024,15 +2026,20 @@ sub delete_file {
 
     $buf = pack "C*", @bytes;
 
+    #dump_blk($buf) if $debug;
     dump_blk($buf) if $debug;
 
     # Write the directory back out.
     if (!write_blk($pofile, $header_pointer, \$buf)) {
+      print "I/O Error writing block $header_pointer\n";
       return 0;
     }
   } else {
+    print "I/O Error reading block $header_pointer\n";
     return 0;
   }
+
+  print "File deleted\n";
 
   return $rv;
 }
