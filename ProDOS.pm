@@ -2303,11 +2303,52 @@ sub create_subdir {
 
   my $rv = 1;
 
-  # Create the subdirectory sector.
+  my $buf;
+
+  if (read_blk($pofile, $header_pointer, \$buf)) {
+    dump_blk($buf) if $debug;
+
+    my @bytes = unpack "C*", $buf;
+
+    # Create the subdirectory sector.
+    my $file_storage_type = 0xd0;
+    $file_storage_type |= length($subdirname);
+    my $file_type = 0x0f;
+
+    # Fill in FILE_NAME
+    my $filename_start = 0x2b + ($i * 0x27) + 0x01;
+    #print"filename_start=$filename_start\n";
+    #print "filename='";
+    my $j = 0;
+    for (my $i = $filename_start; $i < ($filename_start + 15); $i++) {
+      #printf("%c", $bytes[$i]);
+      if ($j < length($apple_filename)) {
+        $bytes[$i] = ord(substr($apple_filename, $j++, 1));
+      } else {
+        $bytes[$i] = 0x00;
+      }
+    }
+    #print "'\n";
+    #print "filename='";
+    #for (my $i = $filename_start; $i < ($filename_start + 15); $i++) {
+    #  printf("%c", $bytes[$i]);
+    #}
+    #print "'\n";
+
 ##FIXME
 
-  # Write file descriptive entry back out.
+    # Write file descriptive entry back out.
 ##FIXME
+    $buf = pack "C*", @bytes;
+
+    if (!write_blk($pofile, $header_pointer, \$buf)) {
+      print "I/O Error writing block $header_pointer\n";
+      return 0;
+    }
+  } else {
+    print "I/O Error reading block $header_pointer\n";
+    return 0;
+  }
 
   return $rv;
 }
