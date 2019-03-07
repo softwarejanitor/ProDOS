@@ -1662,15 +1662,47 @@ sub write_file {
       # Sapling file.
       $file_storage_type = 0x20;
 
-      # Write out the index block.
-##FIXME
+      # Get a block off the free blocks list for the index block.
+      my $blknum = pop @free_blocks;
+      $key_pointer = $blknum;
+
+      # Data for index block.
+      my @indbytes = ();
+
       # Add index block to used blocks
-##FIXME
+      push @used_blocks, $blknum;
 
       # Write out the data blocks.
-##FIXME
-      # Add each block to used blocks list.
-##FIXME
+      for (my $blk = 0; $blk < $numblocks; $blk++) {
+        # Get a free block.
+        my $datablknum = pop @free_blocks;
+
+        # Get the data for this block
+        my @databytes = splice @bytes, 0, 512;
+
+        # Pack the data.
+        my $databuf = pack "C*", @databytes;
+
+        # Write out the block
+        if (!write_blk($pofile, $datablknum, \$databuf)) {
+          print "I/O Error writeing block $datablknum\n";
+        }
+
+        # Add each block to used blocks list.
+        push @used_blocks, $datablknum;
+
+        # Add block to index block
+        $indbytes[$blk] = $datablknum & 0xff00;  # LO byte
+        $indbytes[$blk + 256] = $datablknum >> 8;  # HI byte
+      }
+
+      my $indbuf = pack "C*", @indbytes;
+
+      # Write out the index block.
+      if (!write_blk($pofile, $blknum, \$indbuf)) {
+        print "I/O Error writing block $blknum\n";
+        return 0;
+      }
     } else {
       # Tree file.
       $file_storage_type = 0x30;
