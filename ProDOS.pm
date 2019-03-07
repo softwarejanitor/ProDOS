@@ -1829,10 +1829,9 @@ sub write_file {
         $bytes[0x2b + ($i * 0x27) + 0x14] = (($blocks_used & 0xff00) >> 8);
 
         # Fill in EOF
-        $bytes[0x2b + ($i * 0x27) + 0x15] = 0x00;
-        $bytes[0x2b + ($i * 0x27) + 0x16] = 0x00;
-        $bytes[0x2b + ($i * 0x27) + 0x17] = 0x00;
-##FIXME
+        $bytes[0x2b + ($i * 0x27) + 0x15] = $fsize & 0x0000ff;
+        $bytes[0x2b + ($i * 0x27) + 0x16] = ($fsize & 0x00ff00) >> 8;
+        $bytes[0x2b + ($i * 0x27) + 0x17] = ($fsize & 0xff0000) >> 16;
 
         # Fill in CREATION
         $bytes[0x2b + ($i * 0x27) + 0x18] = 0x00;
@@ -1841,13 +1840,13 @@ sub write_file {
         $bytes[0x2b + ($i * 0x27) + 0x1b] = 0x00;
 ##FIXME
 
-        # Fill in VERSION
+        # Fill in VERSION -- default to ProDOS 1.0
         $bytes[0x2b + ($i * 0x27) + 0x1c] = 0x00;
 
-        # Fill in MIN_VERSION
+        # Fill in MIN_VERSION -- default to ProDOS 1.0
         $bytes[0x2b + ($i * 0x27) + 0x1d] = 0x00;
 
-        # Fill in ACCESS
+        # Fill in ACCESS -- default to unlocked.
         $bytes[0x2b + ($i * 0x27) + 0x1e] = 0xc3;
 
         # Fill in LO byte of AUX_TYPE
