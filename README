@@ -4,11 +4,11 @@ prozap.pl -- partially working
 procat.pl -- partially working
 profree.pl -- mostly working
 proread.pl -- partially working
-prowrite.pl -- started
+prowrite.pl -- partially working
 prorename.pl -- partially working
-prodelete.pl -- nearly working
+prodelete.pl -- partially working
 prolock.pl -- partially working
 prounlock.pl -- partially working
 procopy.pl -- started
-procreate.pl -- 
+procreate.pl -- started
 
