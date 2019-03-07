@@ -2310,7 +2310,6 @@ sub create_subdir {
 
     my @bytes = unpack "C*", $buf;
 
-    # Create the subdirectory sector.
     my $file_storage_type = 0xd0;
     $file_storage_type |= length($subdirname);
     my $file_type = 0x0f;
@@ -2335,7 +2334,30 @@ sub create_subdir {
     #}
     #print "'\n";
 
+    # Create the subdirectory block.
+    my @subdirbytes = ();
+
+    # Get list of free blocks.
+    my @free_blocks = get_free_blocks($pofile, $debug);
+
+    # Get block from free block list for this directory.
+    my $subdirblknum = pop @free_blocks;
+    my $subdir_key_pointer = $subdirblknum;
+
 ##FIXME
+
+    my $subdirbuf = pack "C*", @subdirbytes;
+
+    # Write the new directory block out.
+    if (!write_blk($pofile, $subdirblknum, \$subdirbuf)) {
+      print "I/O Error writing block $subdirblknum\n";
+      return 0;
+    }
+
+    # Mark the subdir block as used.
+    my @used_blocks = ();
+    push @used_blocks, $subdirblknum;
+    $rv = reserve_blocks($pofile, \@used_blocks, $debug);
 
     # Write file descriptive entry back out.
 ##FIXME
