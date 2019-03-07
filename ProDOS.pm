@@ -1710,24 +1710,58 @@ sub write_file {
       # Create the master index block.
       my @master_index = ();
       my $masterblknum = pop @free_blocks;
+      $key_pointer = $masterblknum;
 
       # Add master index block to used blocks
       push @used_blocks, $masterblknum;
 
-      # Create the subindex blocks.
-##FIXME
-      # Add each subindex block to used blocks
-##FIXME
+      # Create the first subindex block.
+      my @indbytes = ();
+      my $subblknum = pop @free_blocks;
 
       # Write out the data blocks.
-##FIXME
-      # Add each block to used blocks list.
-##FIXME
+      my $cursub = 0;
+      my $curblk = 0;
+      for (my $blk = 0; $blk < $numblocks; $blk++) {
+        # Get a free block.
+        my $datablknum = pop @free_blocks;
 
-      # Write out the index blocks.
-##FIXME
-      # Add each index block to the master block.
-##FIXME
+        # Get the data for this block
+        my @databytes = splice @bytes, 0, 512;
+
+        # Add each block to used blocks list.
+        push @used_blocks, $datablknum;
+        my $subblknum = pop @free_blocks;
+
+        # Add block to current sub index block
+        $indbytes[$curblk] = $datablknum & 0xff00;  # LO byte
+        $indbytes[$curblk + 256] = $datablknum >> 8;  # HI byte
+        $curblk++;
+
+        # If the current index block is full or last block write out the sub index block.
+        if ($curblk > 255 || $blk == ($numblocks - 1)) {
+          # Add each subindex block to used blocks
+          push @used_blocks, $subblknum;
+
+          # Write out the sub index block
+          my $subindexbuf = pack "C*", @indbytes;
+
+          if (!write_blk($pofile, $subblknum, \$subindexbuf)) {
+            print "I/O Error writing block $subblknum\n";
+            return 0;
+          }
+
+          # Add each sub index block to the master block.
+          $master_index[$cursub] = $subblknum & 0xff00;  # LO byte
+          $master_index[$cursub + 1] = $subblknum >> 8;  # HI byte
+          $cursub += 2;
+
+          # Get ready for next index block.
+          $curblk = 0;
+          @indbytes = ();
+          $subblknum = pop @free_blocks;
+        }
+      }
 
       # Write out the master index block.
       my $masterbuf = pack "C*", @master_index;
