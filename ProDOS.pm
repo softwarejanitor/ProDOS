@@ -1708,9 +1708,11 @@ sub write_file {
       $file_storage_type = 0x30;
 
       # Create the master index block.
-##FIXME
+      my @master_index = ();
+      my $masterblknum = pop @free_blocks;
+
       # Add master index block to used blocks
-##FIXME
+      push @used_blocks, $masterblknum;
 
       # Create the subindex blocks.
 ##FIXME
@@ -1721,6 +1723,19 @@ sub write_file {
 ##FIXME
       # Add each block to used blocks list.
 ##FIXME
+
+      # Write out the index blocks.
+##FIXME
+      # Add each index block to the master block.
+##FIXME
+
+      # Write out the master index block.
+      my $masterbuf = pack "C*", @master_index;
+
+      if (!write_blk($pofile, $masterblknum, \$masterbuf)) {
+        print "I/O Error writing block $masterblknum\n";
+        return 0;
+      }
     }
 
     # Read & rewrite the file descriptive entry out.
