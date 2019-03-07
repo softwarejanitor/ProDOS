@@ -1796,6 +1796,7 @@ sub write_file {
       dump_blk($dirbuf) if $debug;
       dump_blk($dirbuf);
 
+      # Write the file descriptive entry back out.
       if (!write_blk($pofile, $header_pointer, \$dirbuf)) {
         print "I/O Error writing block $header_pointer\n";
 ##FIXME
@@ -1964,7 +1965,6 @@ sub delete_file {
 
   if (read_blk($pofile, $header_pointer, \$buf)) {
     dump_blk($buf) if $debug;
-    #dump_blk($buf);
 
     my @bytes = unpack "C*", $buf;
 
@@ -1976,6 +1976,7 @@ sub delete_file {
       printf("file_storage_type=\$%02x\n", $file_storage_type);
       $file_storage_type &= 0xf0;
       printf("file_storage_type=\$%02x\n", $file_storage_type);
+      # Set file storage type to 0x00, which means deleted.
       $bytes[0x2b + ($i * 0x27)] = 0x00;
       printf("file_storage_type=\$%02x\n", $file_storage_type);
 
@@ -2021,14 +2022,23 @@ sub delete_file {
           }
         }
         $rv = release_blocks($pofile, \@blocks, $debug);
-      } elsif ($file_storage_type == 0xd0) {
+      } elsif ($file_storage_type == 0xd0 || $file_storage_type == 0xe0) {
         # Subdirectory.
-##FIXME -- need to delete all blocks in the subdirectory.
-        $rv = release_blocks($pofile, [ $key_pointer ], $debug);
-      } elsif ($file_storage_type == 0xe0) {
         # Subdirectory Header.
-##FIXME
-        $rv = release_blocks($pofile, [ $key_pointer ], $debug);
+        my @subdirblks = ();
+        push @subdirblks, $key_pointer;
+        my $subdirblk = $key_pointer
+        my $done = 0;
+        while (!$done) {
+          my ($prv_vol_dir_blk, $nxt_vol_dir_blk, $storage_type_name_length, $subdir_name, $creation_ymd, $creation_hm, $version, $min_version, $access, $entry_length, $entries_per_block, $file_count, $parent_pointer, $parent_entry, $parent_entry_length, @subfiles) = get_subdir_hdr($pofile, $subdirblk, 1, $debug);
+          if ($nxt_vol_dir_blk == 0x0000) {
+            $done = 1;
+          } else {
+            push @subdirblks, $nxt_vol_dir_blk;
+            $dirblk = $nxt_vol_dir_blk;
+          }
+        }
+        $rv = release_blocks($pofile, \@subdirbks, $debug);
       } elsif ($file_storage_type == 0xf0) {
         # Volume directory Header.  This should never happen.
         printf("Can't delete volume directory header \$%02x\n", $header_pointer);
@@ -2047,10 +2057,9 @@ sub delete_file {
 
     $buf = pack "C*", @bytes;
 
-    #dump_blk($buf) if $debug;
-    dump_blk($buf);
+    dump_blk($buf) if $debug;
 
-    # Write the directory back out.
+    # Write the file descriptive entry back back out.
     if (!write_blk($pofile, $header_pointer, \$buf)) {
       print "I/O Error writing block $header_pointer\n";
       return 0;
@@ -2193,7 +2202,34 @@ sub create_subdir {
 
   print "pofile=$pofile subdirname=$subdirname\n" if $debug;
 
-  return 1;
+  my $subdir = '';
+  my $apple_fname = $apple_filename;
+  if ($apple_filename =~ /^[\/]*([^\/]+)\/(\S+)$/) {
+    $subdir = $1;
+    $apple_fname = $2;
+  }
+  print "subdir=$subdir apple_fname=$apple_fname\n";
+
+  # Find an empty file descriptive entry in the proper subdirectory.
+  my ($header_pointer, $i) = find_empty_fdescent($pofile, $subdir, $debug);
+  printf("header_pointer=\$%04x i=%d\n", $header_pointer, $i);
+  # May need to add a subdirectory block if the directory is full.
+##FIXME
+  if ($header_pointer == 0) {
+    print "No directory slots available.\n";
+    return 0 
+  }
+##FIXME
+
+  my $rv = 1;
+
+  # Create the subdirectory sector.
+##FIXME
+
+  # Write file descriptive entry back out.
+##FIXME
+
+  return $rv;
 }
 
 1;
