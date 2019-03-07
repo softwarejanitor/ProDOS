@@ -2322,8 +2322,8 @@ sub create_subdir {
     my $j = 0;
     for (my $i = $filename_start; $i < ($filename_start + 15); $i++) {
       #printf("%c", $bytes[$i]);
-      if ($j < length($apple_filename)) {
-        $bytes[$i] = ord(substr($apple_filename, $j++, 1));
+      if ($j < length($subdirname)) {
+        $bytes[$i] = ord(substr($subdirname, $j++, 1));
       } else {
         $bytes[$i] = 0x00;
       }
