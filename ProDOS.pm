@@ -2027,7 +2027,7 @@ sub delete_file {
         # Subdirectory Header.
         my @subdirblks = ();
         push @subdirblks, $key_pointer;
-        my $subdirblk = $key_pointer
+        my $subdirblk = $key_pointer;
         my $done = 0;
         while (!$done) {
           my ($prv_vol_dir_blk, $nxt_vol_dir_blk, $storage_type_name_length, $subdir_name, $creation_ymd, $creation_hm, $version, $min_version, $access, $entry_length, $entries_per_block, $file_count, $parent_pointer, $parent_entry, $parent_entry_length, @subfiles) = get_subdir_hdr($pofile, $subdirblk, 1, $debug);
@@ -2035,10 +2035,10 @@ sub delete_file {
             $done = 1;
           } else {
             push @subdirblks, $nxt_vol_dir_blk;
-            $dirblk = $nxt_vol_dir_blk;
+            $subdirblk = $nxt_vol_dir_blk;
           }
         }
-        $rv = release_blocks($pofile, \@subdirbks, $debug);
+        $rv = release_blocks($pofile, \@subdirblks, $debug);
       } elsif ($file_storage_type == 0xf0) {
         # Volume directory Header.  This should never happen.
         printf("Can't delete volume directory header \$%02x\n", $header_pointer);
@@ -2203,12 +2203,12 @@ sub create_subdir {
   print "pofile=$pofile subdirname=$subdirname\n" if $debug;
 
   my $subdir = '';
-  my $apple_fname = $apple_filename;
-  if ($apple_filename =~ /^[\/]*([^\/]+)\/(\S+)$/) {
+  my $subdir_fname = $subdirname;
+  if ($subdirname =~ /^[\/]*([^\/]+)\/(\S+)$/) {
     $subdir = $1;
-    $apple_fname = $2;
+    $subdir_fname = $2;
   }
-  print "subdir=$subdir apple_fname=$apple_fname\n";
+  print "subdir=$subdir subdir_fname=$subdir_fname\n";
 
   # Find an empty file descriptive entry in the proper subdirectory.
   my ($header_pointer, $i) = find_empty_fdescent($pofile, $subdir, $debug);
