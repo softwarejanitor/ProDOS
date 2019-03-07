@@ -2305,15 +2305,21 @@ sub create_subdir {
 
   my $buf;
 
+  # Read in the directory.
   if (read_blk($pofile, $header_pointer, \$buf)) {
     dump_blk($buf) if $debug;
 
+    # Unpack the directory block.
     my @bytes = unpack "C*", $buf;
 
+    # Fill in the file type in the file descriptive entry
     my $file_storage_type = 0xd0;
     $file_storage_type |= length($subdirname);
     my $file_type = 0x0f;
+##FIXME
 
+    # Fill in STORAGE_TYPE/NAME_LENGTH
+    $bytes[0x2b + ($i * 0x27)] = $file_storage_type;
     # Fill in FILE_NAME
     my $filename_start = 0x2b + ($i * 0x27) + 0x01;
     #print"filename_start=$filename_start\n";
@@ -2344,7 +2350,19 @@ sub create_subdir {
     my $subdirblknum = pop @free_blocks;
     my $subdir_key_pointer = $subdirblknum;
 
+    # Fill in the subdirectory block.
 ##FIXME
+    # Fill in STORAGE_TYPE/NAME_LENGTH
+    $subdirbytes[0x04] = $file_storage_type;
+    # Fill in SUBDIR_NAME
+    $j = 0;
+    for (my $i = 0x05; $i <= 0x13; $i++) {
+      if ($j < length($subdirname)) {
+        $subdirbytes[$i] = ord(substr($subdirname, $j++, 1));
+      } else {
+        $subdirbytes[$i] = 0x00;
+      }
+    }
 
     my $subdirbuf = pack "C*", @subdirbytes;
 
