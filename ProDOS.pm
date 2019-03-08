@@ -167,10 +167,10 @@ my %ftype = (
 
   # $60 PRE PC Pre-Boot
   0x60 => 'PRE',
-  # $6B BIO PC BIOS
-  0x6b => 'BIO',
   # $66 NCF ProDOS File Navigator Command File
   0x66 => 'NCF',
+  # $6B BIO PC BIOS
+  0x6b => 'BIO',
   # $6D DVR PC Driver
   0x6d => 'DVR',
   # $6E PRE PC Pre-Boot
@@ -418,6 +418,368 @@ my %months = (
   10, 'OCT',
   11, 'NOV',
   12, 'DEC',
+);
+
+# ProDOS file types (reverse)
+my %typef = (
+  # $0x Types: General
+
+  # 00    Typeless file
+  '   ' => 0x00,
+  # 01    BAD Bad block(s) file
+  'BAD' => 0x01,
+  # 04    TXT Text file (ASCII text, msb off)
+  'TXT' => 0x04,
+  # 06    BIN Binary file (8-bit binary image)
+  'BIN' => 0x06,
+  # 07    FNT Apple /// Font
+  'FNT' => 0x07,
+  # 08    FOT HiRes/Double HiRes Graphics
+  'FOT' => 0x08,
+  # 09    BA3 Apple III BASIC Program
+  'BA3' => 0x09,
+  # 0A    DA3 Apple III BASIC Data
+  'DA3' => 0x0a,
+  # 0B    WPF Generic Word Processing
+  'WPF' => 0x0b,
+  # 0C    SOS SOS System File
+  'SOS' => 0x0c,
+  # f    DIR Directory file
+  'DIR' => 0x0f,
+
+  # $1x Types: Productivity
+
+  # 19    ADB AppleWorks data base file
+  'ADB' => 0x19,
+  # 1a    AWP AppleWorks word processing file
+  'AWP' => 0x1a,
+  # 1b    ASP AppleWorks spreadsheet file
+  'ASP' => 0x1b,
+
+  # $2x Types: Code
+
+  # $20 TDM Desktop Manager File
+  'TDM' => 0x20,
+  # $21 IPS Instant Pascal Source
+  'IPS' => 0x21,
+  # $22 UPV UCSD Pascal Volume
+  'UPV' => 0x22,
+  # $29 3SD SOS Directory
+  '3SD' => 0x29,
+  # $2A 8SC Source Code
+  '8SC' => 0x2a,
+  # $2B 8OB Object Code
+  '8OB' => 0x2b,
+
+  # $2C 8IC Interpreted Code
+  '8IC' => 0x2c,
+  #     $8003 - Apex Program File
+
+  # $2D 8LD Language Data
+  '8LD' => 0x2d,
+  # $2E P8C ProDOS 8 Code Module
+  'P8C' => 0x2e,
+
+  # $4x Types: Miscellaneous
+
+  # $41 OCR Optical Character Recognition
+  'OCR' => 0x41,
+  # $42 FTD File Type Definitions
+  'FTD' => 0x42,
+
+  # $5x Types: Apple IIgs General
+
+  # $50 GWP Apple IIgs Word Processing
+  'GWP' => 0x50,
+  #    $5445 - Teach
+  #    $8001 - DeluxeWrite
+  #    $8010 - AppleWorks GS
+
+  # $51 GSS Apple IIgs Spreadsheet
+  'GSS' => 0x51,
+  #    $8010 - AppleWorks GS
+
+  # $52 GDB Apple IIgs Database
+  'GDB' => 0x52,
+  #    $8010 - AppleWorks GS
+  #    $8011 - AppleWorks GS Template
+  #    $8013 - GSAS
+
+  # $53 DRW Object Oriented Graphics
+  'DRW' => 0x53,
+  #    $8010 - AppleWorks GS
+
+  # $54 GDP Apple IIgs Desktop Publishing
+  'GDP' => 0x54,
+  #    $8002 - GraphicWriter
+  #    $8010 - AppleWorks GS
+
+  # $55 HMD HyperMedia
+  'HMD' => 0x55,
+  #    $0001 - HyperCard GS
+  #    $8001 - Tutor-Tech
+  #    $8002 - HyperStudio
+  #    $8003 - Nexus
+
+  # $56 EDU Educational Program Data
+  'EDU' => 0x56,
+  # $57 STN Stationery
+  'STN' => 0x57,
+  # $58 HLP Help File
+  'HLP' => 0x58,
+
+  # $59 COM Communications
+  'COM' => 0x59,
+  #    $8010 - AppleWorks GS
+
+  # $5A CFG Configuration
+  'CFG' => 0x5a,
+  # $5B ANM Animation
+  'ANM' => 0x5b,
+  # $5C MUM Multimedia
+  'MUM' => 0x5c,
+  # $5D ENT Entertainment
+  'ENT' => 0x5d,
+  # $5E DVU Development Utility
+  'DVU' => 0x5e,
+
+  # $6x Types: PC Transporter
+
+  # $60 PRE PC Pre-Boot
+  'PRE' => 0x60,
+  # $66 NCF ProDOS File Navigator Command File
+  'NCF' => 0x66,
+  # $6B BIO PC BIOS
+  'BIO' => 0x6b,
+  # $6D DVR PC Driver
+  'DVR' => 0x6d,
+  # $6E PRE PC Pre-Boot
+  'PRE' => 0x6e,
+  # $6F HDV PC Hard Disk Image
+  'HDV' => 0x6f,
+
+  # $7x Types: Kreative Software
+
+  # $70 SN2 Sabine's Notebook 2.0
+  'SN2' => 0x70,
+  # $71 KMT
+  'KMT' => 0x71,
+  # $72 DSR
+  'DSR' => 0x72,
+  # $73 BAN
+  'BAN' => 0x73,
+  # $74 CG7
+  'CG7' => 0x74,
+  # $75 TNJ
+  'TNJ' => 0x75,
+  # $76 SA7
+  'SA7' => 0x76,
+  # $77 KES
+  'KES' => 0x77,
+  # $78 JAP
+  'JAP' => 0x78,
+  # $79 CSL
+  'CSL' => 0x79,
+  # $7A TME
+  'TME' => 0x7a,
+  # $7B TLB
+  'TLB' => 0x7b,
+  # $7C MR7
+  'MR7' => 0x7c,
+
+  # $7D MLR Mika City
+  'MLR' => 0x7d,
+  #    $005C - Script
+  #    $C7AB - Color Table
+  #    $CDEF - Character Definition
+
+  # $7E MMM
+  'MMM' => 0x7e,
+  # $7F JCP
+  'JCP' => 0x7f,
+
+  # $8x Types: GEOS
+
+  # $80 GES System File
+  'GES' => 0x80,
+  # $81 GEA Desk Accessory
+  'GEA' => 0x81,
+  # $82 GEO Application
+  'GEO' => 0x82,
+  # $83 GED Document
+  'GED' => 0x83,
+  # $84 GEF Font
+  'GEF' => 0x84,
+  # $85 GEP Printer Driver
+  'GEP' => 0x85,
+  # $86 GEI Input Driver
+  'GEI' => 0x86,
+  # $87 GEX Auxiliary Driver
+  'GEX' => 0x87,
+  # $89 GEV Swap File
+  'GEV' => 0x89,
+  # $8B GEC Clock Driver
+  'GEC' => 0x8b,
+  # $8C GEK Interface Card Driver
+  'GEK' => 0x8c,
+  # $8D GEW Formatting Data
+  'GEW' => 0x8d,
+
+  # $Ax Types: Apple IIgs BASIC
+
+  # $A0 WP  WordPerfect
+  'WP ' => 0xa0,
+  # $AB GSB Apple IIgs BASIC Program
+  'GSB' => 0xab,
+  # $AC TDF Apple IIgs BASIC TDF
+  'TDF' => 0xac,
+  # $AD BDF Apple IIgs BASIC Data
+  'BDF' => 0xad,
+
+  # $Bx Types: Apple IIgs System
+
+  # $B0 SRC Apple IIgs Source Code
+  'SRC' => 0xb0,
+  # $B1 OBJ Apple IIgs Object Code
+  'OBJ' => 0xb1,
+  # $B2 LIB Apple IIgs Library
+  'LIB' => 0xb2,
+  # $B3 S16 Apple IIgs Application Program
+  'S16' => 0xb3,
+  # $B4 RTL Apple IIgs Runtime Library
+  'RTL' => 0xb4,
+  # $B5 EXE Apple IIgs Shell Script
+  'EXE' => 0xb5,
+  # $B6 PIF Apple IIgs Permanent INIT
+  'PIF' => 0xb6,
+  # $B7 TIF Apple IIgs Temporary INIT
+  'TIF' => 0xb7,
+  # $B8 NDA Apple IIgs New Desk Accessory
+  'NDA' => 0xb8,
+  # $B9 CDA Apple IIgs Classic Desk Accessory
+  'CDA' => 0xb9,
+  # $BA TOL Apple IIgs Tool
+  'TOL' => 0xba,
+  # $BB DRV Apple IIgs Device Driver
+  'DRV' => 0xbb,
+
+  # $BC LDF Apple IIgs Generic Load File
+  'LDF' => 0xbc,
+  #    $4001 - Nifty List Module
+  #    $4002 - Super Info Module
+  #    $4004 - Twilight Module
+  #    $4083 - Marinetti Link Layer Module
+
+  # $BD FST Apple IIgs File System Translator
+  'FST' => 0xbd,
+  # $BF DOC Apple IIgs Document
+  'DOC' => 0xbf,
+
+  # $Cx Types: Graphics
+
+  # $C0 PNT Apple IIgs Packed Super HiRes
+  'PNT' => 0xc0,
+  #    $0001 - Packed Super HiRes
+  #    $0002 - Apple Preferred Format
+  #    $0003 - Packed QuickDraw II PICT
+
+  # $C1 PIC Apple IIgs Super HiRes
+  'PIC' => 0xc1,
+  #    $0001 - QuickDraw PICT
+  #    $0002 - Super HiRes 3200
+
+  # $C2 ANI PaintWorks Animation
+  'ANI' => 0xc2,
+  # $C3 PAL PaintWorks Palette
+  'PAL' => 0xc3,
+  # $C5 OOG Object-Oriented Graphics
+  'OOG' => 0xc5,
+  # $C6 SCR Script
+  'SCR' => 0xc6,
+  # $C7 CDV Apple IIgs Control Panel
+  'CDV' => 0xc7,
+
+  # $C8 FON Apple IIgs Font
+  'FON' => 0xc8,
+  #    $0000 - QuickDraw Bitmap Font
+  #    $0001 - Pointless TrueType Font
+
+  # $C9 FND Apple IIgs Finder Data
+  'FND' => 0xc9,
+  # $CA ICN Apple IIgs Icon File
+  'ICN' => 0xca,
+
+  # $Dx Types: Audio
+
+  # $D5 MUS Music
+  'MUS' => 0xd5,
+  # $D6 INS Instrument
+  'INS' => 0xd6,
+  # $D7 MDI MIDI
+  'MDI' => 0xd7,
+
+  # $D8 SND Apple IIgs Audio
+  'SND' => 0xd8,
+  #    $0000 - AIFF
+  #    $0001 - AIFF-C
+  #    $0002 - ASIF Instrument
+  #    $0003 - Sound Resource
+  #    $0004 - MIDI Synth Wave
+  #    $8001 - HyperStudio Sound
+
+  # $DB DBM DB Master Document
+  'DBM' => 0xdb,
+
+  # $Ex Types: Miscellaneous
+
+  # $E0 LBR Archive
+  'LBR' => 0xe0,
+  #    $0000 - ALU
+  #    $0001 - AppleSingle
+  #    $0002 - AppleDouble Header
+  #    $0003 - AppleDouble Data
+  #    $8000 - Binary II
+  #    $8001 - AppleLink ACU
+  #    $8002 - ShrinkIt
+
+  # $E2 ATK AppleTalk Data
+  'ATK' => 0xe2,
+  #    $FFFF - EasyMount Alias
+
+  # $EE R16 EDASM 816 Relocatable Code
+  'R16' => 0xee,
+  # ef    PAS ProDOS PASCAL file
+  'PAS' => 0xef,
+
+  # $Fx Types: System
+
+  # f0    CMD ProDOS added command file
+  'CMD' => 0xf0,
+  # f1-f8     User defined file types 1 through 8
+  'OVL' => 0xf1,
+  'UD2' => 0xf2,
+  'UD3' => 0xf3,
+  'UD4' => 0xf4,
+  'BAT' => 0xf5,
+  'UD6' => 0xf6,
+  'UD7' => 0xf7,
+  'PRG' => 0xf8,
+
+  # $F9 P16 ProDOS-16 System File
+  'P16' => 0xf9,
+
+  # fa    INT Integer BASIC Program
+  'INT' => 0xfa,
+  # fb    IVR Integer BASIC Variables
+  'IVR' => 0xfb,
+  # fc    BAS Applesoft BASIC program file
+  'BAS' => 0xfc,
+  # fd    VAR Applesoft stored variables file
+  'VAR' => 0xfd,
+  # fe    REL Relocatable object module file (EDASM)
+  'REL' => 0xfe,
+  # ff    SYS ProDOS system file
+  'SYS' => 0xff,
 );
 
 # Default key volume directory block.
@@ -1615,7 +1977,7 @@ sub get_free_blocks {
 # Write a file
 #
 sub write_file {
-  my ($pofile, $filename, $mode, $conv, $apple_filename, $dbg) = @_;
+  my ($pofile, $filename, $mode, $conv, $apple_filename, $ft, $at, $dbg) = @_;
 
   $debug = 1 if defined $dbg && $dbg;
 
@@ -1653,6 +2015,7 @@ sub write_file {
   # Find an empty file descriptive entry in the proper subdirectory.
   my ($header_pointer, $i) = find_empty_fdescent($pofile, $subdir, $debug);
   printf("header_pointer=\$%04x i=%d\n", $header_pointer, $i);
+  return 0 if $header_pointer == 0;
 ##FIXME
   # May need to add a subdirectory block if the directory is full.
 ##FIXME
@@ -1660,10 +2023,29 @@ sub write_file {
   my $rv = 1;
 
   my $file_storage_type = 0x00;
-  my $file_type = 0x00;
+  my $file_type = $typef{'TXT'};
+  if (defined $typef{$ft}) {
+    $file_type = $typef{$ft};
+  }
+
+
 ##FIXME
   my $key_pointer = 0x00;
   my $aux_type = 0x00;
+  if (defined $at && $at ne '') {
+    print "at=$at\n";
+    if ($at =~ /^\$([0-9a-fA-F]+)/) {
+      print "1=$1\n";
+      $aux_type = hex(lc($1));
+    } else {
+      print "aux_type=$at\n";
+      $aux_type = $at;
+    }
+  } elsif ($ft eq 'BIN') {
+print "GOT HERE\n";
+    # Default this to 0x2000 for binary files.
+    $aux_type = 0x2000;
+  }
 ##FIXME
 
   # Read in the file.
@@ -1817,7 +2199,7 @@ sub write_file {
 
     if (read_blk($pofile, $header_pointer, \$dirbuf)) {
       dump_blk($dirbuf) if $debug;
-      dump_blk($dirbuf);
+      #dump_blk($dirbuf);
 
       my @bytes = unpack "C*", $dirbuf;
 
@@ -1873,10 +2255,10 @@ sub write_file {
 
         # Fill in CREATION
         my ($ymd, $hm) = current_date();
-        $bytes[0x2b + ($i * 0x27) + 0x18] = ($ymd >> 8) & 0x00ff;
-        $bytes[0x2b + ($i * 0x27) + 0x19] = $ymd & 0x00ff;
-        $bytes[0x2b + ($i * 0x27) + 0x1a] = ($hm >> 8) & 0x00ff;
-        $bytes[0x2b + ($i * 0x27) + 0x1b] = $hm & 0x00ff;
+        $bytes[0x2b + ($i * 0x27) + 0x18] = $ymd & 0x00ff;
+        $bytes[0x2b + ($i * 0x27) + 0x19] = ($ymd >> 8) & 0x00ff;
+        $bytes[0x2b + ($i * 0x27) + 0x1a] = $hm & 0x00ff;
+        $bytes[0x2b + ($i * 0x27) + 0x1b] = ($hm >> 8) & 0x00ff;
 
         # Fill in VERSION -- default to ProDOS 1.0
         $bytes[0x2b + ($i * 0x27) + 0x1c] = 0x00;
@@ -1914,7 +2296,7 @@ sub write_file {
       $dirbuf = pack "C*", @bytes;
 
       dump_blk($dirbuf) if $debug;
-      dump_blk($dirbuf);
+      #dump_blk($dirbuf);
 
       # Write the file descriptive entry back out.
       if (!write_blk($pofile, $header_pointer, \$dirbuf)) {
