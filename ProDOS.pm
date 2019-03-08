@@ -1974,7 +1974,8 @@ sub get_free_blocks {
   #}
   #print "\n";
 
-  return reverse sort { $a <=> $b } @free_blocks;
+  #return reverse sort { $a <=> $b } @free_blocks;
+  return reverse @free_blocks;
 }
 
 #
@@ -2034,9 +2035,8 @@ sub write_file {
   if (defined $typef{$ft}) {
     $file_type = $typef{$ft};
   }
-
-
 ##FIXME
+
   my $key_pointer = 0x00;
   my $aux_type = 0x00;
   if (defined $at && $at ne '') {
@@ -2795,11 +2795,39 @@ sub create_subdir {
     $bytes[0x2b + ($i * 0x27) + 0x13] = 0x01;  # Default to 1.
     $bytes[0x2b + ($i * 0x27) + 0x14] = 0x00;  # Default to 1.
 
+    # FILL IN EOF
+    $bytes[0x2b + ($i * 0x27) + 0x15] = 0x00;
+    $bytes[0x2b + ($i * 0x27) + 0x16] = 0x00;
+    $bytes[0x2b + ($i * 0x27) + 0x17] = 0x00;
+
     # FILL IN CREATION
     $bytes[0x2b + ($i * 0x27) + 0x18] = $ymd & 0x00ff;
     $bytes[0x2b + ($i * 0x27) + 0x19] = ($ymd >> 8) & 0x00ff;
     $bytes[0x2b + ($i * 0x27) + 0x1a] = $hm & 0x00ff;
     $bytes[0x2b + ($i * 0x27) + 0x1b] = ($hm >> 8) & 0x00ff;
+
+    # FILL IN VERSION
+    $bytes[0x2b + ($i * 0x27) + 0x1c] = 0x00;  # Default to ProDOS 1.0
+
+    # FILL IN MIN_VERSION
+    $bytes[0x2b + ($i * 0x27) + 0x1d] = 0x00;  # Default to ProDOS 1.0
+
+    # FILL IN ACCESS
+    $bytes[0x2b + ($i * 0x27) + 0x1e] = 0xc3;  # Default to unlocked (set to 0x01 when file count > 0)
+
+    # FILL IN AUX_TYPE
+    $bytes[0x2b + ($i * 0x27) + 0x1f] = 0x00;
+    $bytes[0x2b + ($i * 0x27) + 0x20] = 0x00;
+
+    # FILL IN LAST_MOD
+    $bytes[0x2b + ($i * 0x27) + 0x21] = $ymd & 0x00ff;
+    $bytes[0x2b + ($i * 0x27) + 0x22] = ($ymd >> 8) & 0x00ff;
+    $bytes[0x2b + ($i * 0x27) + 0x23] = $hm & 0x00ff;
+    $bytes[0x2b + ($i * 0x27) + 0x24] = ($hm >> 8) & 0x00ff;
+
+    # FILL IN HEADER_POINTER
+    $bytes[0x2b + ($i * 0x27) + 0x25] = $header_pointer & 0x00ff;
+    $bytes[0x2b + ($i * 0x27) + 0x26] = ($header_pointer >> 8) & 0x00ff;
 
     # Create the subdirectory block.
     my @subdirbytes = ();
