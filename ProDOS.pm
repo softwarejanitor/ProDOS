@@ -1841,6 +1841,7 @@ sub get_vol_bit_map {
     clear_buf(\$buf);
     if (read_blk($pofile, $bit_map_pointer, \$buf)) {
       dump_blk($buf) if $debug;
+      #dump_blk($buf);
       my (@blks) = parse_vol_bit_map($buf, $debug);
       foreach my $blk (@blks) {
         #print "trk=$trk blk=$blk\n";
@@ -1953,9 +1954,12 @@ sub get_free_blocks {
 
   my $block = 0;
   foreach my $byte (@blocks) {
+    #printf("byte=%02x %08b\n", $byte, $byte);
     for (my $bit = 0; $bit < 8; $bit++) {
-      if ($byte & (1 << $bit)) {
-        unshift @free_blocks, $block;
+      if ($byte & (0x80 >> $bit)) {
+        #print "pushing block $block\n";
+        # Block zero should never be free.
+        push @free_blocks, $block if $block != 0;
       }
       $block++;
     }
@@ -1970,7 +1974,7 @@ sub get_free_blocks {
   #}
   #print "\n";
 
-  return @free_blocks;
+  return reverse sort { $a <=> $b } @free_blocks;
 }
 
 #
@@ -1998,6 +2002,9 @@ sub write_file {
   my @free_blocks = get_free_blocks($pofile, $debug);
 
   my $free_count = scalar @free_blocks;
+
+  # Need to make sure the file doesn't already exist.
+##FIXME
 
   if ($free_count < $numblocks) {
     print "Not enough space on volume, $free_count free blocks, need $numblocks\n";
@@ -2407,7 +2414,8 @@ sub reserve_blocks {
   # Mark blocks in list as used in the bit map.
   foreach my $cur_blk (@{$used_blocks}) {
     #printf("cur_blk=%d byte=%d bit=%d\n", $cur_blk, $cur_blk / 8, $cur_blk % 8);
-    $bitmaps[$cur_blk / 8] &= ~(1 << ($cur_blk % 8));
+    #$bitmaps[$cur_blk / 8] &= ~(1 << ($cur_blk % 8));
+    $bitmaps[$cur_blk / 8] &= ~(0x80 >> ($cur_blk % 8));
     last if $cur_blk == 0;
   }
 
@@ -2433,7 +2441,8 @@ sub release_blocks {
   # Free blocks in the bit map.
   foreach my $cur_blk (@{$free_blocks}) {
     #printf("cur_blk=%d byte=%d bit=%d\n", $cur_blk, $cur_blk / 8, $cur_blk % 8);
-    $bitmaps[$cur_blk / 8] |= (1 << ($cur_blk % 8));
+    #$bitmaps[$cur_blk / 8] |= (1 << ($cur_blk % 8));
+    $bitmaps[$cur_blk / 8] |= (0x80 >> ($cur_blk % 8));
     last if $cur_blk == 0;
   }
 
@@ -2610,7 +2619,7 @@ sub lock_file {
 
   if (read_blk($pofile, $header_pointer, \$buf)) {
     dump_blk($buf) if $debug;
-    dump_blk($buf);
+    #dump_blk($buf);
 
     my @bytes = unpack "C*", $buf;
 
@@ -2662,7 +2671,7 @@ sub unlock_file {
 
   if (read_blk($pofile, $header_pointer, \$buf)) {
     dump_blk($buf) if $debug;
-    dump_blk($buf);
+    #dump_blk($buf);
 
     my @bytes = unpack "C*", $buf;
 
