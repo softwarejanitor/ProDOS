@@ -2353,7 +2353,7 @@ sub create_subdir {
     # Fill in the subdirectory block.
 ##FIXME
     # Fill in STORAGE_TYPE/NAME_LENGTH
-    $subdirbytes[0x04] = $file_storage_type;
+    $subdirbytes[0x04] = 0x0e | length($subdirname);
     # Fill in SUBDIR_NAME
     $j = 0;
     for (my $i = 0x05; $i <= 0x13; $i++) {
@@ -2362,6 +2362,47 @@ sub create_subdir {
       } else {
         $subdirbytes[$i] = 0x00;
       }
+    }
+    $subdirbytes[0x14] = 0x75;  # Must contain this
+    $subdirbytes[0x15] = 0x00;  # Reserved
+    $subdirbytes[0x15] = 0x00;  # Reserved
+    $subdirbytes[0x17] = 0x00;  # Reserved
+    $subdirbytes[0x18] = 0x00;  # Reserved
+    $subdirbytes[0x19] = 0x00;  # Reserved
+    $subdirbytes[0x1a] = 0x00;  # Reserved
+    $subdirbytes[0x1b] = 0x00;  # Reserved
+    # FILL IN CREATION
+    $subdirbytes[0x1c] = 0x00;
+    $subdirbytes[0x1d] = 0x00;
+    $subdirbytes[0x1e] = 0x00;
+    $subdirbytes[0x1f] = 0x00;
+##FIXME
+    # FILL IN VERSION
+    $subdirbytes[0x20] = 0x00;  # Default to ProDOS 1.0
+    # FILL IN MIN_VERSION
+    $subdirbytes[0x21] = 0x00;  # Default to ProDOS 1.0
+    # FILL IN ACCCESS
+    $subdirbytes[0x22] = 0xc4;  # Default to unlocked
+    # FILL IN ENTRY_LENGTH
+    $subdirbytes[0x23] = 0x27;  # Default
+    # FILL IN ENTRIES_PER_BLOCK
+    $subdirbytes[0x24] = 0x0d;  # Default
+    # FILL IN FILE_COUNT
+    $subdirbytes[0x25] = 0x00;  # Default to empty
+    $subdirbytes[0x26] = 0x00;  # Default to empty
+    # FILL IN PARENT_POINTER
+    $subdirbytes[0x27] = 0x00;
+    $subdirbytes[0x28] = 0x00;
+##FIXME
+    # FILL IN PARENT_ENTRY
+    $subdirbytes[0x29] = 0x00;
+##FIXME
+    # FILL IN PARENT_ENTRY_LENGTH
+    $subdirbytes[0x2a] = 0x27;
+
+    # Pad out the rest of the block
+    for (my $i = 0x2b; $i < 512; $i++) {
+      $subdirbytes[$i] = 0x00;
     }
 
     my $subdirbuf = pack "C*", @subdirbytes;
