@@ -583,6 +583,32 @@ sub date_convert {
   return sprintf("%2d-%s-%02d %2d:%02d", $day, $months{$mon}, $year, $hour, $min);
 }
 
+#
+# Get current date in ProDOS format.
+#
+sub current_date {
+  my ($s, $min, $h, $d, $m, $y, $w) = localtime();
+  my $year = substr(($y + 1900), 2, 2);
+  my $mon = $m + 1;
+
+  my $ymd = 0;
+  my $hm = 0;
+
+  # Year bits 9-15
+  $ymd |= ($year << 9);
+  # Mon bits 5-8
+  $ymd |= ($mon << 5);
+  # Day bits 0-4
+  $ymd |= $d;
+
+  # Hour bits 8-12
+  $hm |= ($h << 8);
+  # Min bits 0-5
+  $hm |= $min;
+
+  return $ymd, $hm;
+}
+
 # Parse Key Volume Directory Block
 sub parse_key_vol_dir_blk {
   my ($buf, $mode, $dbg) = @_;
@@ -1834,11 +1860,11 @@ sub write_file {
         $bytes[0x2b + ($i * 0x27) + 0x17] = ($fsize & 0xff0000) >> 16;
 
         # Fill in CREATION
-        $bytes[0x2b + ($i * 0x27) + 0x18] = 0x00;
-        $bytes[0x2b + ($i * 0x27) + 0x19] = 0x00;
-        $bytes[0x2b + ($i * 0x27) + 0x1a] = 0x00;
-        $bytes[0x2b + ($i * 0x27) + 0x1b] = 0x00;
-##FIXME
+        my ($ymd, $hm) = current_date();
+        $bytes[0x2b + ($i * 0x27) + 0x18] = ($ymd >> 8) & 0x00ff;
+        $bytes[0x2b + ($i * 0x27) + 0x19] = $ymd & 0x00ff;
+        $bytes[0x2b + ($i * 0x27) + 0x1a] = ($hm >> 8) & 0x00ff;
+        $bytes[0x2b + ($i * 0x27) + 0x1b] = $hm & 0x00ff;
 
         # Fill in VERSION -- default to ProDOS 1.0
         $bytes[0x2b + ($i * 0x27) + 0x1c] = 0x00;
@@ -1856,11 +1882,10 @@ sub write_file {
 ##FIXME
 
         # Fill in LAST_MOD
-        $bytes[0x2b + ($i * 0x27) + 0x21] = 0x00;
-        $bytes[0x2b + ($i * 0x27) + 0x22] = 0x00;
-        $bytes[0x2b + ($i * 0x27) + 0x23] = 0x00;
-        $bytes[0x2b + ($i * 0x27) + 0x24] = 0x00;
-##FIXME
+        $bytes[0x2b + ($i * 0x27) + 0x21] = ($ymd >> 8) & 0x00ff;
+        $bytes[0x2b + ($i * 0x27) + 0x22] = $ymd & 0x00ff;
+        $bytes[0x2b + ($i * 0x27) + 0x23] = ($hm >> 8) & 0x00ff;
+        $bytes[0x2b + ($i * 0x27) + 0x24] = $hm & 0x00ff;
 
         # Fill in LO byte of HEADER_POINTER
         $bytes[0x2b + ($i * 0x27) + 0x25] = $header_pointer & 0x00ff;
@@ -2369,7 +2394,9 @@ sub create_subdir {
         $subdirbytes[$i] = 0x00;
       }
     }
+
     $subdirbytes[0x14] = 0x75;  # Must contain this
+
     $subdirbytes[0x15] = 0x00;  # Reserved
     $subdirbytes[0x15] = 0x00;  # Reserved
     $subdirbytes[0x17] = 0x00;  # Reserved
@@ -2377,32 +2404,42 @@ sub create_subdir {
     $subdirbytes[0x19] = 0x00;  # Reserved
     $subdirbytes[0x1a] = 0x00;  # Reserved
     $subdirbytes[0x1b] = 0x00;  # Reserved
+
     # FILL IN CREATION
-    $subdirbytes[0x1c] = 0x00;
-    $subdirbytes[0x1d] = 0x00;
-    $subdirbytes[0x1e] = 0x00;
-    $subdirbytes[0x1f] = 0x00;
-##FIXME
+    my ($ymd, $hm) = current_date();
+    $subdirbytes[0x1c] = ($ymd >> 8) & 0x00ff;
+    $subdirbytes[0x1d] = $ymd & 0x00ff;
+    $subdirbytes[0x1e] = ($hm >> 8) & 0x00ff;
+    $subdirbytes[0x1f] = $hm & 0x00ff;
+
     # FILL IN VERSION
     $subdirbytes[0x20] = 0x00;  # Default to ProDOS 1.0
+
     # FILL IN MIN_VERSION
     $subdirbytes[0x21] = 0x00;  # Default to ProDOS 1.0
+
     # FILL IN ACCCESS
     $subdirbytes[0x22] = 0xc4;  # Default to unlocked
+
     # FILL IN ENTRY_LENGTH
     $subdirbytes[0x23] = 0x27;  # Default
+
     # FILL IN ENTRIES_PER_BLOCK
     $subdirbytes[0x24] = 0x0d;  # Default
+
     # FILL IN FILE_COUNT
     $subdirbytes[0x25] = 0x00;  # Default to empty
     $subdirbytes[0x26] = 0x00;  # Default to empty
+
     # FILL IN PARENT_POINTER
     $subdirbytes[0x27] = 0x00;
     $subdirbytes[0x28] = 0x00;
 ##FIXME
+
     # FILL IN PARENT_ENTRY
     $subdirbytes[0x29] = 0x00;
 ##FIXME
+
     # FILL IN PARENT_ENTRY_LENGTH
     $subdirbytes[0x2a] = 0x27;
 
