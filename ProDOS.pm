@@ -1871,6 +1871,9 @@ sub write_file {
         return 0;
       }
 
+      # Fix FILE_COUNT in directory.
+##FIXME
+
       $dirbuf = pack "C*", @bytes;
 
       dump_blk($dirbuf) if $debug;
@@ -2059,6 +2062,9 @@ sub delete_file {
       # Set file storage type to 0x00, which means deleted.
       $bytes[0x2b + ($i * 0x27)] = 0x00;
       printf("file_storage_type=\$%02x\n", $file_storage_type);
+
+      # Fix file directory count.
+##FIXME
 
       # Now free all the blocks
       if ($file_storage_type == 0x10) {
