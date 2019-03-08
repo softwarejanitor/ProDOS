@@ -2005,7 +2005,11 @@ sub write_file {
   my $free_count = scalar @free_blocks;
 
   # Need to make sure the file doesn't already exist.
-##FIXME
+  my ($storage_type, $file_type, $key_pointer, $blocks_used, $eof, $header_pointer, $i) = find_file($pofile, $filename, $debug);
+  if ($storage_type != 0) {
+    print "File exists\n";
+    return 0;
+  }
 
   if ($free_count < $numblocks) {
     print "Not enough space on volume, $free_count free blocks, need $numblocks\n";
