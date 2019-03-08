@@ -670,7 +670,7 @@ sub parse_key_vol_dir_blk {
       push @files, { 'prv' => $prv_vol_dir_blk, 'nxt' => $nxt_vol_dir_blk, 'filename' => $fname, 'ftype' => $f_type, 'used' => $blocks_used, 'mdate' => $mdate, 'cdate' => $cdate, 'atype' => $aux_type, 'atype' => $atype, 'access' => $access, 'eof' => $endfile, 'keyptr' => $key_pointer, 'storage_type' => $storage_type, 'header_pointer' => $header_pointer, 'i' => $i };
     } else {
       if ($mode == 2) {
-        push @files, { 'storage_type' => 0, 'header_pointer' => 2, 'i' => $i };
+        push @files, { 'storage_type' => 0, 'header_pointer' => $key_vol_dir_blk, 'i' => $i };
       }
     }
   }
@@ -2392,6 +2392,9 @@ sub create_subdir {
     #  printf("%c", $bytes[$i]);
     #}
     #print "'\n";
+
+    # FILL IN FILE_TYPE
+    $bytes[0x2b + ($i * 0x27) + 0x10] = 0x0f;
 
     # FILL IN KEY_POINTER
     $bytes[0x2b + ($i * 0x27) + 0x11] = $subdir_key_pointer & 0x00ff;  # LO byte
