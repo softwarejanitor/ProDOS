@@ -594,17 +594,29 @@ sub current_date {
   my $ymd = 0;
   my $hm = 0;
 
+  #printf("year=%08b\n", $year);
+  #printf("mon=%08b\n", $mon);
+  #printf("d=%08b\n", $d);
+
+  #printf("h=%08b\n", $h);
+  #printf("min=%08b\n", $min);
+
   # Year bits 9-15
   $ymd |= ($year << 9);
+  #printf("ymd=%016b\n", $ymd);
   # Mon bits 5-8
   $ymd |= ($mon << 5);
+  #printf("ymd=%016b\n", $ymd);
   # Day bits 0-4
   $ymd |= $d;
+  #printf("ymd=%016b\n", $ymd);
 
   # Hour bits 8-12
   $hm |= ($h << 8);
+  #printf("hm=%016b\n", $hm);
   # Min bits 0-5
   $hm |= $min;
+  #printf("hm=%016b\n", $hm);
 
   return $ymd, $hm;
 }
@@ -658,7 +670,7 @@ sub parse_key_vol_dir_blk {
       push @files, { 'prv' => $prv_vol_dir_blk, 'nxt' => $nxt_vol_dir_blk, 'filename' => $fname, 'ftype' => $f_type, 'used' => $blocks_used, 'mdate' => $mdate, 'cdate' => $cdate, 'atype' => $aux_type, 'atype' => $atype, 'access' => $access, 'eof' => $endfile, 'keyptr' => $key_pointer, 'storage_type' => $storage_type, 'header_pointer' => $header_pointer, 'i' => $i };
     } else {
       if ($mode == 2) {
-        push @files, { 'storage_type' => 0, 'header_pointer' => $header_pointer, 'i' => $i };
+        push @files, { 'storage_type' => 0, 'header_pointer' => 2, 'i' => $i };
       }
     }
   }
@@ -1096,7 +1108,7 @@ sub find_empty_fdescent {
       next if ! defined $file->{'header_pointer'} || $file->{'header_pointer'} eq '';
       next if ($file->{'storage_type'} != 0);
       $found_it = 1;
-print "Found empty slot $file->{'i'}\n";
+print "Found empty slot header_pointer=$file->{'header_pointer'} slot=$file->{'i'}\n";
       return $file->{'header_pointer'}, $file->{'i'};
     }
 
@@ -1581,7 +1593,7 @@ sub get_free_blocks {
   foreach my $byte (@blocks) {
     for (my $bit = 0; $bit < 8; $bit++) {
       if ($byte & (1 << $bit)) {
-        push @free_blocks, $block;
+        unshift @free_blocks, $block;
       }
       $block++;
     }
@@ -1882,10 +1894,10 @@ sub write_file {
 ##FIXME
 
         # Fill in LAST_MOD
-        $bytes[0x2b + ($i * 0x27) + 0x21] = ($ymd >> 8) & 0x00ff;
-        $bytes[0x2b + ($i * 0x27) + 0x22] = $ymd & 0x00ff;
-        $bytes[0x2b + ($i * 0x27) + 0x23] = ($hm >> 8) & 0x00ff;
-        $bytes[0x2b + ($i * 0x27) + 0x24] = $hm & 0x00ff;
+        $bytes[0x2b + ($i * 0x27) + 0x21] = $ymd & 0x00ff;
+        $bytes[0x2b + ($i * 0x27) + 0x22] = ($ymd >> 8) & 0x00ff;
+        $bytes[0x2b + ($i * 0x27) + 0x23] = $hm & 0x00ff;
+        $bytes[0x2b + ($i * 0x27) + 0x24] = ($hm >> 8) & 0x00ff;
 
         # Fill in LO byte of HEADER_POINTER
         $bytes[0x2b + ($i * 0x27) + 0x25] = $header_pointer & 0x00ff;
@@ -2340,6 +2352,9 @@ sub create_subdir {
   if (read_blk($pofile, $header_pointer, \$buf)) {
     dump_blk($buf) if $debug;
 
+    # Get current date.
+    my ($ymd, $hm) = current_date();
+
     # Unpack the directory block.
     my @bytes = unpack "C*", $buf;
 
@@ -2348,6 +2363,13 @@ sub create_subdir {
     $file_storage_type |= length($subdirname);
     my $file_type = 0x0f;
 ##FIXME
+
+    # Get list of free blocks.
+    my @free_blocks = get_free_blocks($pofile, $debug);
+
+    # Get block from free block list for this directory.
+    my $subdirblknum = pop @free_blocks;
+    my $subdir_key_pointer = $subdirblknum;
 
     # Fill in STORAGE_TYPE/NAME_LENGTH
     $bytes[0x2b + ($i * 0x27)] = $file_storage_type;
@@ -2371,18 +2393,35 @@ sub create_subdir {
     #}
     #print "'\n";
 
+    # FILL IN KEY_POINTER
+    $bytes[0x2b + ($i * 0x27) + 0x11] = $subdir_key_pointer & 0x00ff;  # LO byte
+    $bytes[0x2b + ($i * 0x27) + 0x12] = ($subdir_key_pointer >> 8) & 0x00ff;  # HI byte
+
+    # FILL IN BLOCKS_USED
+    $bytes[0x2b + ($i * 0x27) + 0x13] = 0x01;  # Default to 1.
+    $bytes[0x2b + ($i * 0x27) + 0x14] = 0x00;  # Default to 1.
+
+    # FILL IN CREATION
+    $bytes[0x2b + ($i * 0x27) + 0x18] = $ymd & 0x00ff;
+    $bytes[0x2b + ($i * 0x27) + 0x19] = ($ymd >> 8) & 0x00ff;
+    $bytes[0x2b + ($i * 0x27) + 0x1a] = $hm & 0x00ff;
+    $bytes[0x2b + ($i * 0x27) + 0x1b] = ($hm >> 8) & 0x00ff;
+
     # Create the subdirectory block.
     my @subdirbytes = ();
 
-    # Get list of free blocks.
-    my @free_blocks = get_free_blocks($pofile, $debug);
-
-    # Get block from free block list for this directory.
-    my $subdirblknum = pop @free_blocks;
-    my $subdir_key_pointer = $subdirblknum;
-
     # Fill in the subdirectory block.
 ##FIXME
+
+    # Initialize the bytes for the block
+    for (my $i = 0; $i < 512; $i++) {
+      $subdirbytes[$i] = 0x00;
+    }
+
+    $subdirbytes[0x00] = 0x00;  # Prev directory block default to 0x00
+    $subdirbytes[0x01] = 0x00;
+    $subdirbytes[0x02] = 0x00;  # Next directory block default to 0x00
+    $subdirbytes[0x03] = 0x00;
     # Fill in STORAGE_TYPE/NAME_LENGTH
     $subdirbytes[0x04] = 0x0e | length($subdirname);
     # Fill in SUBDIR_NAME
@@ -2406,11 +2445,10 @@ sub create_subdir {
     $subdirbytes[0x1b] = 0x00;  # Reserved
 
     # FILL IN CREATION
-    my ($ymd, $hm) = current_date();
-    $subdirbytes[0x1c] = ($ymd >> 8) & 0x00ff;
-    $subdirbytes[0x1d] = $ymd & 0x00ff;
-    $subdirbytes[0x1e] = ($hm >> 8) & 0x00ff;
-    $subdirbytes[0x1f] = $hm & 0x00ff;
+    $subdirbytes[0x1c] = $ymd & 0x00ff;
+    $subdirbytes[0x1d] = ($ymd >> 8) & 0x00ff;
+    $subdirbytes[0x1e] = $hm & 0x00ff;
+    $subdirbytes[0x1f] = ($hm >> 8) & 0x00ff;
 
     # FILL IN VERSION
     $subdirbytes[0x20] = 0x00;  # Default to ProDOS 1.0
@@ -2432,20 +2470,22 @@ sub create_subdir {
     $subdirbytes[0x26] = 0x00;  # Default to empty
 
     # FILL IN PARENT_POINTER
-    $subdirbytes[0x27] = 0x00;
-    $subdirbytes[0x28] = 0x00;
-##FIXME
+    $subdirbytes[0x27] = $header_pointer & 0x00ff;
+    $subdirbytes[0x28] = ($header_pointer >> 8) & 0x00ff;
 
     # FILL IN PARENT_ENTRY
-    $subdirbytes[0x29] = 0x00;
-##FIXME
+    $subdirbytes[0x29] = $i;
 
     # FILL IN PARENT_ENTRY_LENGTH
     $subdirbytes[0x2a] = 0x27;
 
-    # Pad out the rest of the block
-    for (my $i = 0x2b; $i < 512; $i++) {
-      $subdirbytes[$i] = 0x00;
+    if ($debug) {
+      print "subdirbytes=\n";
+      for (my $i = 0; $i < 512; $i++) {
+        print "\n" if !($i % 16);
+        printf("%02x ", $subdirbytes[$i]);
+      }
+      print "\n";
     }
 
     my $subdirbuf = pack "C*", @subdirbytes;
