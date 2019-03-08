@@ -11,4 +11,6 @@ prolock.pl -- partially working
 prounlock.pl -- partially working
 procopy.pl -- started
 procreate.pl -- partially working
+proundelete.pl -- started
+proformat.pl -- started
 

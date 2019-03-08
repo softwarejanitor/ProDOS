@@ -1988,7 +1988,18 @@ sub write_file {
 
   print "pofile=$pofile filename=$filename mode=$mode conv=$conv apple_filename=$apple_filename\n" if $debug;
 
-  return 0 if ! -e $filename;
+  # Need to make sure the file doesn't already exist.
+  my ($storage_type, $t_file_type, $t_key_pointer, $blocks_used, $eof, $t_header_pointer, $t_i) = find_file($pofile, $filename, $debug);
+  if ($storage_type != 0) {
+    print "File exists\n";
+    return 0;
+  }
+
+  # Check for existance of source file.
+  if (! -e $filename) {
+    print "File $filename does not exist.\n";
+    return 0;
+  }
 
   # Get size of input file
   my $fsize = -s $filename;
@@ -1997,19 +2008,12 @@ sub write_file {
   my $numblocks = int($fsize / 512) + (($fsize % 512) ? 1 : 0);
   print "numblocks=$numblocks\n";
 
-  my $blocks_used = $numblocks;
+  $blocks_used = $numblocks;
 
   # Get list of free blocks.
   my @free_blocks = get_free_blocks($pofile, $debug);
 
   my $free_count = scalar @free_blocks;
-
-  # Need to make sure the file doesn't already exist.
-  my ($storage_type, $file_type, $key_pointer, $blocks_used, $eof, $header_pointer, $i) = find_file($pofile, $filename, $debug);
-  if ($storage_type != 0) {
-    print "File exists\n";
-    return 0;
-  }
 
   if ($free_count < $numblocks) {
     print "Not enough space on volume, $free_count free blocks, need $numblocks\n";
@@ -2939,6 +2943,40 @@ sub create_subdir {
     print "I/O Error reading block $header_pointer\n";
     return 0;
   }
+
+  return $rv;
+}
+
+#
+# Undelete a file
+#
+sub undelete_file {
+  my ($pofile, $filename, $dbg) = @_;
+
+  $debug = 1 if defined $dbg && $dbg;
+
+  print "pofile=$pofile filename=$filename\n" if $debug;
+
+  my $rv = 1;
+
+##FIXME
+
+  return $rv;
+}
+
+#
+# Format a volume
+#
+sub format_volume {
+  my ($pofile, $blocks, $volume_name, $dbg) = @_;
+
+  $debug = 1 if defined $dbg && $dbg;
+
+  print "pofile=$pofile blocks=$blocks volume_name=$volume_name\n" if $debug;
+
+  my $rv = 1;
+
+##FIXME
 
   return $rv;
 }
