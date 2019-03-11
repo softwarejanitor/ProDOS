@@ -1081,7 +1081,26 @@ sub write_key_vol_dir_blk {
   return 1;
 }
 
+#
+# Write Volume Directory Block
+#
+sub write_vol_dir_blk {
+  my ($pofile, $vol_dir_blk, $prv_vol_dir_blk, $nxt_vol_dir_blk, $dir_ents) = @_;
+
+  my $buf = pack $vol_dir_blk_tmpl, ($prv_vol_dir_blk, $nxt_vol_dir_blk, $dir_ents);
+
+
+  if (!write_blk($pofile, $vol_dir_blk, \$buf)) {
+    print "I/O Error writing block $vol_dir_blk\n";
+    return 0;
+  }
+
+  return 1;
+}
+
+#
 # Parse Volume Directory Block
+#
 sub parse_vol_dir_blk {
   my ($buf, $mode, $dbg) = @_;
 
@@ -3054,10 +3073,18 @@ sub format_volume {
   write_key_vol_dir_blk($pofile, 0x00, 0x03, 0xf0 | length($volume_name), $volume_name, $creation_ymd, $creation_hm, 0x00, 0x00, 0xc3, 0x27, 0x0d, 0, 0x06, $total_blocks, $dir_ents);
 
   # Write the rest of the Volume Directory blocks.
+  my $prv_vol_dir_blk = $key_vol_dir_blk;
+  my $nxt_vol_dir_blk;
   for (my $i = $key_vol_dir_blk + 1; $i < 0x06; $i++) {
-    #write_vol_dir_blk($i);
-##FIXME
+    if ($i == 0x05) {
+      $nxt_vol_dir_blk = 0x00;
+    } else {
+      $nxt_vol_dir_blk = $i + 1;
+    }
+    write_vol_dir_blk($pofile, $i, $prv_vol_dir_blk, $nxt_vol_dir_blk, $dir_ents);
+    $prv_vol_dir_blk++;
   }
+
   # Write Volume Bit Map blocks.
   my @bitmaps = ();
   $bitmaps[0] = 0x01;  ##FIXME -- this assumes a 5.25 floppy.
