@@ -2959,6 +2959,11 @@ sub undelete_file {
 
   my $rv = 1;
 
+  # Find erased directory entry.
+##FIXME
+  # Re-set the STORAGE_TYPE/NAME_LENGTH byte.
+##FIXME
+  # Re-mark all the blocks for the file as used.
 ##FIXME
 
   return $rv;
@@ -2976,6 +2981,60 @@ sub format_volume {
 
   my $rv = 1;
 
+  # Create the blank file.
+  my $ofh;
+  if (open($ofh, ">$pofile")) {
+    close $ofh;
+  } else {
+    print "Can't write $pofile\n";
+  }
+
+  # Initialize a block.
+  my @bytes = ();
+  for (my $i = 0; $i < 512; $i++) {
+    push @bytes, 0x00;
+  }
+  my $buf = pack "C*", @bytes;
+
+  # Write out blank blocks for volume.
+  for (my $i = 0; $i < $blocks; $i++) {
+    if (!write_blk($pofile, $i, \$buf)) {
+      print "I/O Error writing block $i\n";
+      return 0;
+    }
+  }
+
+  # Write boot block (block 0), write in a boiler plate copy taken from a disk image.
+  if (read_blk("TEMPLATE.po", 0, \$buf)) {
+    dump_blk($buf) if $debug;
+    if (!write_blk($pofile, 0, \$buf)) {
+      print "I/O Error writing block 0\n";
+      return 0;
+    }
+  } else {
+      print "I/O Error reading template block 0\n";
+      return 0;
+  }
+
+  # Write Block 1 (SOS boot block), write in a boiler plate copy taken from a disk image.
+  if (read_blk("TEMPLATE.po", 1, \$buf)) {
+    dump_blk($buf) if $debug;
+    if (!write_blk($pofile, 1, \$buf)) {
+      print "I/O Error writing block 1\n";
+      return 0;
+    }
+  } else {
+      print "I/O Error reading template block 1\n";
+      return 0;
+  }
+
+  # Write Key Volume Dir Block (block 2).
+##FIXME
+  # Calculate number of volume bit map blocks based on number of blocks in volume.
+##FIXME
+  # Write Volume Bit Map blocks.
+##FIXME
+  # Write Volume Directory blocka.
 ##FIXME
 
   return $rv;
