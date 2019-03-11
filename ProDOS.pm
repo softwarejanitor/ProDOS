@@ -1065,6 +1065,22 @@ sub get_key_vol_dir_blk {
   return 0;
 }
 
+#
+# Write Key Volume Directory Block
+#
+sub write_key_vol_dir_blk {
+  my ($pofile, $prv_vol_dir_blk, $nxt_vol_dir_blk, $storage_type_name_length, $volume_name, $creation_ymd, $creation_hm, $version, $min_version, $access, $entry_length, $entries_per_block, $file_count, $bit_map_pointer, $total_blocks, $dir_ents) = @_;
+  
+  my $buf = pack $key_vol_dir_blk_tmpl, ($prv_vol_dir_blk, $nxt_vol_dir_blk, $storage_type_name_length, $volume_name, $creation_ymd, $creation_hm, $version, $min_version, $access, $entry_length, $entries_per_block, $file_count, $bit_map_pointer, $total_blocks, $dir_ents);
+
+  if (!write_blk($pofile, $key_vol_dir_blk, \$buf)) {
+    print "I/O Error writing block $key_vol_dir_blk\n";
+    return 0;
+  }
+
+  return 1;
+}
+
 # Parse Volume Directory Block
 sub parse_vol_dir_blk {
   my ($buf, $mode, $dbg) = @_;
@@ -2973,11 +2989,11 @@ sub undelete_file {
 # Format a volume
 #
 sub format_volume {
-  my ($pofile, $blocks, $volume_name, $dbg) = @_;
+  my ($pofile, $total_blocks, $volume_name, $dbg) = @_;
 
   $debug = 1 if defined $dbg && $dbg;
 
-  print "pofile=$pofile blocks=$blocks volume_name=$volume_name\n" if $debug;
+  print "pofile=$pofile total_blocks=$total_blocks volume_name=$volume_name\n" if $debug;
 
   my $rv = 1;
 
@@ -2997,7 +3013,7 @@ sub format_volume {
   my $buf = pack "C*", @bytes;
 
   # Write out blank blocks for volume.
-  for (my $i = 0; $i < $blocks; $i++) {
+  for (my $i = 0; $i < $total_blocks; $i++) {
     if (!write_blk($pofile, $i, \$buf)) {
       print "I/O Error writing block $i\n";
       return 0;
@@ -3028,14 +3044,27 @@ sub format_volume {
       return 0;
   }
 
+   # Get current date.
+   my ($creation_ymd, $creation_hm) = current_date();
+
+  # Empty directory entries.
+  my $dir_ents = '';
+
   # Write Key Volume Dir Block (block 2).
+  write_key_vol_dir_blk($pofile, 0x00, 0x03, 0xf0 | length($volume_name), $volume_name, $creation_ymd, $creation_hm, 0x00, 0x00, 0xc3, 0x27, 0x0d, 0, 0x06, $total_blocks, $dir_ents);
+
+  # Write the rest of the Volume Directory blocks.
+  for (my $i = $key_vol_dir_blk + 1; $i < 0x06; $i++) {
+    #write_vol_dir_blk($i);
 ##FIXME
-  # Calculate number of volume bit map blocks based on number of blocks in volume.
-##FIXME
+  }
   # Write Volume Bit Map blocks.
-##FIXME
-  # Write Volume Directory blocka.
-##FIXME
+  my @bitmaps = ();
+  $bitmaps[0] = 0x01;  ##FIXME -- this assumes a 5.25 floppy.
+  for (my $i = 1; $i < $total_blocks / 8; $i++) {
+    $bitmaps[$i] = 0xff;
+  }
+  write_vol_bit_map($pofile, \@bitmaps, $debug);
 
   return $rv;
 }
