@@ -2098,30 +2098,32 @@ sub write_file {
 
   my $rv = 1;
 
+  # Default file storage type -- 0x00 is deleted.
   my $file_storage_type = 0x00;
+  # Set file type, default TXT.
   my $file_type = $typef{'TXT'};
-  if (defined $typef{$ft}) {
+  if (defined $typef{$ft} && $ft ne '') {
     $file_type = $typef{$ft};
+  } else {
+    print "Unknown file type $ft\n" if $ft ne '';
   }
-##FIXME
 
   my $key_pointer = 0x00;
   my $aux_type = 0x00;
   if (defined $at && $at ne '') {
-    print "at=$at\n";
+    print "at=$at\n" if $debug;
     if ($at =~ /^\$([0-9a-fA-F]+)/) {
-      print "1=$1\n";
+      print "1=$1\n" if $debug;
       $aux_type = hex(lc($1));
     } else {
-      print "aux_type=$at\n";
+      print "aux_type=$at\n" if $debug;
       $aux_type = $at;
     }
   } elsif ($ft eq 'BIN') {
-print "GOT HERE\n";
+    print "Setting default aux_type for BIN\n" if $debug;
     # Default this to 0x2000 for binary files.
     $aux_type = 0x2000;
   }
-##FIXME
 
   # Read in the file.
   my $ifh;
@@ -2381,7 +2383,6 @@ print "GOT HERE\n";
       }
     } else {
       print "I/O Error reading block $header_pointer\n";
-##FIXME
       return 0;
     }
 
@@ -3111,6 +3112,9 @@ sub undelete_file {
 
   # Re-mark all the blocks for the file as used.
   $rv = reserve_blocks($pofile, \@used_blocks, $debug);
+
+  # Re-set file count for directory
+##FIXME
 
   return $rv;
 }
