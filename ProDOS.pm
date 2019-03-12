@@ -1797,10 +1797,10 @@ $debug = 0;
       last if $blk == 0;
       my @subblks = get_sub_ind_blk($pofile, $blk, $debug);
 
-      foreach my $sblk (@subblks) {
-        #print "sblk=$sblk\n";
-        last if $sblk == 0;
-      }
+      #foreach my $sblk (@subblks) {
+      #  #print "sblk=$sblk\n";
+      #  last if $sblk == 0;
+      #}
 #die "ACK!\n";
 
       foreach my $subblk (@subblks) {
@@ -3024,29 +3024,93 @@ sub undelete_file {
 
   print "storage_type=$storage_type file_type=$file_type key_pointer=$key_pointer blocks_used=$blocks_used eof=$eof header_pointer=$header_pointer i=$i\n";
 
+  my @used_blocks = ();
   # Re-set the STORAGE_TYPE/NAME_LENGTH byte.
   if ($file_type eq 'DIR') {
     # Directory
     $storage_type = 0x0d;
+
+    # Read directory blocks, add them to reserve list.
+    my $buf2;
+    my $blk = $key_pointer;
+    my $done = 0;
+    while (!$done) {
+      push @used_blocks, $blk;
+      clear_buf(\$buf2);
+      if (read_blk($pofile, $blk, \$buf2)) {
+        my @subdirbytes = unpack "C*", $buf2;
+        if  ($subdirbytes[2] == 0x00 && $subdirbytes[3] == 0x00) {
+          $done = 1;
+        } else {
+          $blk = ($subdirbytes[2] | ($subdirbytes[3] >> 8));
+        }
+      } else {
+        print "I/O Error reading block $blk\n";
+        return 0;
+      }
+    }
   # Guess on whether it is a seedling, sapling or tree based on EOF.
   } elsif ($eof <= 512) {
     # Seedling;
     $storage_type = 0x10;
+    push @used_blocks, $key_pointer;
   } elsif ($eof <= (256 * 512)) {
     # Saplingg;
     $storage_type = 0x20;
+
+    push @used_blocks, $key_pointer;
+    # Read index block, add blocks to reserve list.
+    my @blks = get_ind_blk($pofile, $key_pointer, $debug);
+    foreach my $blk (@blks) {
+      push @used_blocks, $blk;
+    }
   } else {
     # Tree
     $storage_type = 0x30;
+
+    push @used_blocks, $key_pointer;
+    # Read master index block and index blocks, add blocks to reserve list.
+    my @blks = get_master_ind_blk($pofile, $key_pointer, $debug);
+
+    my $blkno = 1;
+    foreach my $blk (@blks) {
+      push @used_blocks, $blk;
+
+      my @subblks = get_sub_ind_blk($pofile, $blk, $debug);
+
+      foreach my $subblk (@subblks) {
+        push @used_blocks, $subblk;
+      }
+
+      last if $blkno++ == $blocks_used - 1;
+    }
   }
   $storage_type |= length($filename);
 
   printf("storage_type=\$%02x\n", $storage_type);
 
   # Re-write file descriptive entry.
-##FIXME
+  my $buf;
+  if (read_blk($pofile, $header_pointer, \$buf)) {
+    dump_blk($buf) if $debug;
+
+    my @bytes = unpack "C*", $buf;
+
+    # Set file storage type to hopefully original value.
+    $bytes[0x2b + ($i * 0x27)] = $storage_type;
+
+    $buf = pack "C*", @bytes;
+
+    if (!write_blk($pofile, $header_pointer, \$buf)) {
+      print "I/O Error writing block $header_pointer\n";
+      return 0;
+    }
+  } else {
+    print "I/O Error reading block $header_pointer\n";
+  }
+
   # Re-mark all the blocks for the file as used.
-##FIXME
+  $rv = reserve_blocks($pofile, \@used_blocks, $debug);
 
   return $rv;
 }
