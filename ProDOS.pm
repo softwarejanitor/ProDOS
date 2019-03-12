@@ -1237,6 +1237,10 @@ sub parse_subdir_hdr_blk {
     } else {
       if ($mode == 2) {
         push @files, { 'header_pointer' => $header_pointer, 'i' => $i };
+      } elsif ($mode == 3) {
+        my $f_type = $ftype{$file_type};
+        $f_type = sprintf("\$%02x", $file_type) unless defined $f_type;
+        push @files, { 'prv' => $prv_vol_dir_blk, 'nxt' => $nxt_vol_dir_blk, 'filename' => $fname, 'ftype' => $f_type, 'used' => $blocks_used, 'mdate' => $mdate, 'cdate' => $cdate, 'atype' => $aux_type, 'atype' => $atype, 'access' => $access, 'eof' => $endfile, 'keyptr' => $key_pointer, 'storage_type' => $storage_type, 'header_pointer' => $header_pointer, 'i' => $i };
       }
     }
   }
@@ -3039,6 +3043,7 @@ sub undelete_file {
 
   printf("storage_type=\$%02x\n", $storage_type);
 
+  # Re-write file descriptive entry.
 ##FIXME
   # Re-mark all the blocks for the file as used.
 ##FIXME
