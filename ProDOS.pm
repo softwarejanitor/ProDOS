@@ -1003,8 +1003,15 @@ sub parse_key_vol_dir_blk {
     my $storage_type_name_length = shift @flds;
     my $storage_type = ($storage_type_name_length & 0xf0) >> 4;
     my $name_length = $storage_type_name_length & 0x0f;
+    if ($mode == 3) {
+      $name_length = 15;
+    }
     my $file_name = shift @flds;
     my $fname = substr($file_name, 0, $name_length);
+    if ($mode == 3) {
+      $fname =~ s/\s$//g;
+      $fname =~ s/\x00+$//g;
+    }
     my $file_type = shift @flds;
     my $key_pointer = shift @flds;
     my $blocks_used = shift @flds;
@@ -1033,6 +1040,11 @@ sub parse_key_vol_dir_blk {
     } else {
       if ($mode == 2) {
         push @files, { 'storage_type' => 0, 'header_pointer' => $key_vol_dir_blk, 'i' => $i };
+      } elsif ($mode == 3) {
+        #print "filename='$fname'\n";
+        my $f_type = $ftype{$file_type};
+        $f_type = sprintf("\$%02x", $file_type) unless defined $f_type;
+        push @files, { 'prv' => $prv_vol_dir_blk, 'nxt' => $nxt_vol_dir_blk, 'filename' => $fname, 'ftype' => $f_type, 'used' => $blocks_used, 'mdate' => $mdate, 'cdate' => $cdate, 'atype' => $aux_type, 'atype' => $atype, 'access' => $access, 'eof' => $endfile, 'keyptr' => $key_pointer, 'storage_type' => $storage_type, 'header_pointer' => $header_pointer, 'i' => $i };
       }
     }
   }
@@ -1138,7 +1150,7 @@ sub parse_vol_dir_blk {
     my $last_mod_hm = shift @flds;
     my $mdate = date_convert($last_mod_ymd, $last_mod_hm);
     my $header_pointer = shift @flds;
-    if ($storage_type != 0x00) {
+    if ($storage_type != 0x00 || $mode == 3) {
       my $f_type = $ftype{$file_type};
       $f_type = sprintf("\$%02x", $file_type) unless defined $f_type;
       push @files, { 'prv' => $prv_vol_dir_blk, 'nxt' => $nxt_vol_dir_blk, 'filename' => $fname, 'ftype' => $f_type, 'used' => $blocks_used, 'mdate' => $mdate, 'cdate' => $cdate, 'atype' => $aux_type, 'atype' => $atype, 'access' => $access, 'eof' => $endfile, 'keyptr' => $key_pointer, 'storage_type' => $storage_type, 'header_pointer' => $header_pointer, 'i' => $i };
@@ -1526,7 +1538,7 @@ print "Found empty slot header_pointer=$file->{'header_pointer'} slot=$file->{'i
 # Find a file
 #
 sub find_file {
-  my ($pofile, $filename, $dbg) = @_;
+  my ($pofile, $filename, $mode, $dbg) = @_;
 
   $debug = 1 if defined $dbg && $dbg;
 
@@ -1550,12 +1562,13 @@ sub find_file {
     $fname = $2;
   }
 
-  my ($prv_vol_dir_blk, $nxt_vol_dir_blk, $storage_type_name_length, $volume_name, $creation_ymd, $creation_hm, $version, $min_version, $access, $entry_length, $entries_per_block, $file_count, $bit_map_pointer, $total_blocks, @files) = get_key_vol_dir_blk($pofile, 1, $debug);
+  my ($prv_vol_dir_blk, $nxt_vol_dir_blk, $storage_type_name_length, $volume_name, $creation_ymd, $creation_hm, $version, $min_version, $access, $entry_length, $entries_per_block, $file_count, $bit_map_pointer, $total_blocks, @files) = get_key_vol_dir_blk($pofile, $mode, $debug);
 
   my $found_it = 0;
   foreach my $file (@files) {
     if ($base_dir eq '') {
-      #print "file=$file->{'filename'}\n";
+      #print "file='$file->{'filename'}'\n";
+      #print "filename='$filename'\n";
       if ($file->{'filename'} eq $filename) {
         #print "FOUND IT!\n";
         $found_it = 1;
@@ -1567,6 +1580,8 @@ sub find_file {
         $header_pointer = $file->{'header_pointer'};
         $file_index = $file->{'i'};
         last;
+      #} else {
+      #  print "NOT MATCH '$file->{'filename'}' '$filename'\n";
       }
     } else {
       if ($file->{'filename'} eq $base_dir) {
@@ -1581,7 +1596,7 @@ sub find_file {
         $file_index = $file->{'i'};
 
         # Now read the subdir(s) and look for the file.
-        my ($prv_vol_dir_blk, $nxt_vol_dir_blk, $storage_type_name_length, $subdir_name, $creation_ymd, $creation_hm, $version, $min_version, $access, $entry_length, $entries_per_block, $file_count, $parent_pointer, $parent_entry, $parent_entry_length, @subfiles) = get_subdir_hdr($pofile, $key_pointer, 1, $debug);
+        my ($prv_vol_dir_blk, $nxt_vol_dir_blk, $storage_type_name_length, $subdir_name, $creation_ymd, $creation_hm, $version, $min_version, $access, $entry_length, $entries_per_block, $file_count, $parent_pointer, $parent_entry, $parent_entry_length, @subfiles) = get_subdir_hdr($pofile, $key_pointer, $mode, $debug);
 
         foreach my $subfile (@subfiles) {
           #print "filename=$subfile->{'filename'}\n";
@@ -1595,6 +1610,8 @@ sub find_file {
             $eof = $subfile->{'eof'};
             $header_pointer = $subfile->{'header_pointer'};
             $file_index = $subfile->{'i'};
+          #} else {
+          #  print "NOT MATCH\n";
           }
         }
         last;
@@ -1606,7 +1623,7 @@ sub find_file {
     my $vol_dir_blk = $nxt_vol_dir_blk;
 
     while ($vol_dir_blk) {
-      my ($prv_vol_dir_blk, $nxt_vol_dir_blk, @files) = get_vol_dir_blk($pofile, $vol_dir_blk, 1, $debug);
+      my ($prv_vol_dir_blk, $nxt_vol_dir_blk, @files) = get_vol_dir_blk($pofile, $vol_dir_blk, $mode, $debug);
 
       foreach my $file (@files) {
         if ($base_dir eq '') {
@@ -1622,6 +1639,8 @@ sub find_file {
             $header_pointer = $file->{'header_pointer'};
             $file_index = $file->{'i'};
             last;
+          #} else {
+          #  print "NOT MATCH\n";
           }
         } else {
           if ($file->{'filename'} eq $base_dir) {
@@ -1636,7 +1655,7 @@ sub find_file {
             $file_index = $file->{'i'};
 
             # Now read the subdir(s) and look for the file.
-            my ($prv_vol_dir_blk, $nxt_vol_dir_blk, $storage_type_name_length, $subdir_name, $creation_ymd, $creation_hm, $version, $min_version, $access, $entry_length, $entries_per_block, $file_count, $parent_pointer, $parent_entry, $parent_entry_length, @subfiles) = get_subdir_hdr($pofile, $key_pointer, 1, $debug);
+            my ($prv_vol_dir_blk, $nxt_vol_dir_blk, $storage_type_name_length, $subdir_name, $creation_ymd, $creation_hm, $version, $min_version, $access, $entry_length, $entries_per_block, $file_count, $parent_pointer, $parent_entry, $parent_entry_length, @subfiles) = get_subdir_hdr($pofile, $key_pointer, $mode, $debug);
 
             foreach my $subfile (@subfiles) {
               #print "filename=$subfile->{'filename'}\n";
@@ -1650,6 +1669,8 @@ sub find_file {
                 $eof = $subfile->{'eof'};
                 $header_pointer = $subfile->{'header_pointer'};
                 $file_index = $subfile->{'i'};
+              #} else {
+              #  print "NOT MATCH\n";
               }
             }
             last;
@@ -1680,7 +1701,7 @@ $debug = 1;
   print "pofile=$pofile filename=$filename mode=$mode conv=$conv text_conv=$text_conv output_filename=$output_file\n" if $debug;
 $debug = 0;
 
-  my ($storage_type, $file_type, $key_pointer, $blocks_used, $eof) = find_file($pofile, $filename, $debug);
+  my ($storage_type, $file_type, $key_pointer, $blocks_used, $eof) = find_file($pofile, $filename, 1, $debug);
 
   #print "storage_type=$storage_type file_type=$file_type key_pointer=$key_pointer blocks_used=$blocks_used eof=$eof\n";
 
@@ -2024,7 +2045,7 @@ sub write_file {
   print "pofile=$pofile filename=$filename mode=$mode conv=$conv apple_filename=$apple_filename\n" if $debug;
 
   # Need to make sure the file doesn't already exist.
-  my ($storage_type, $t_file_type, $t_key_pointer, $blocks_used, $eof, $t_header_pointer, $t_i) = find_file($pofile, $filename, $debug);
+  my ($storage_type, $t_file_type, $t_key_pointer, $blocks_used, $eof, $t_header_pointer, $t_i) = find_file($pofile, $filename, 1, $debug);
   if ($storage_type != 0) {
     print "File exists\n";
     return 0;
@@ -2321,7 +2342,7 @@ print "GOT HERE\n";
 
         # Fill in LO byte of AUX_TYPE
         $bytes[0x2b + ($i * 0x27) + 0x1f] = $aux_type & 0x00ff;
-        # Fill in HI byte of AUX_TYPR
+        # Fill in HI byte of AUX_TYPE
         $bytes[0x2b + ($i * 0x27) + 0x20] = (($aux_type & 0xff00) >> 8);
 ##FIXME
 
@@ -2379,7 +2400,7 @@ sub rename_file {
 
   #print "pofile=$pofile filename=$filename new_filename=$new_filename\n" if $debug;
 
-  my ($storage_type, $file_type, $key_pointer, $blocks_used, $eof, $header_pointer, $i) = find_file($pofile, $filename, $debug);
+  my ($storage_type, $file_type, $key_pointer, $blocks_used, $eof, $header_pointer, $i) = find_file($pofile, $filename, 1, $debug);
 
   #print "storage_type=$storage_type file_type=$file_type key_pointer=$key_pointer blocks_used=$blocks_used eof=$eof header_pointer=$header_pointer i=$i\n";
 
@@ -2507,7 +2528,7 @@ sub delete_file {
 
   print "pofile=$pofile filename=$filename\n" if $debug;
 
-  my ($storage_type, $file_type, $key_pointer, $blocks_used, $eof, $header_pointer, $i) = find_file($pofile, $filename, $debug);
+  my ($storage_type, $file_type, $key_pointer, $blocks_used, $eof, $header_pointer, $i) = find_file($pofile, $filename, 1, $debug);
 
   #print "storage_type=$storage_type file_type=$file_type key_pointer=$key_pointer blocks_used=$blocks_used eof=$eof header_pointer=$header_pointer i=$i\n";
 
@@ -2652,7 +2673,7 @@ sub lock_file {
 
   print "pofile=$pofile filename=$filename\n" if $debug;
 
-  my ($storage_type, $file_type, $key_pointer, $blocks_used, $eof, $header_pointer, $i) = find_file($pofile, $filename, $debug);
+  my ($storage_type, $file_type, $key_pointer, $blocks_used, $eof, $header_pointer, $i) = find_file($pofile, $filename, 1, $debug);
 
   print "storage_type=$storage_type file_type=$file_type key_pointer=$key_pointer blocks_used=$blocks_used eof=$eof header_pointer=$header_pointer i=$i\n";
 
@@ -2704,7 +2725,7 @@ sub unlock_file {
 
   print "pofile=$pofile filename=$filename\n" if $debug;
 
-  my ($storage_type, $file_type, $key_pointer, $blocks_used, $eof, $header_pointer, $i) = find_file($pofile, $filename, $debug);
+  my ($storage_type, $file_type, $key_pointer, $blocks_used, $eof, $header_pointer, $i) = find_file($pofile, $filename, 1, $debug);
 
   print "storage_type=$storage_type file_type=$file_type key_pointer=$key_pointer blocks_used=$blocks_used eof=$eof header_pointer=$header_pointer i=$i\n";
 
@@ -2995,8 +3016,29 @@ sub undelete_file {
   my $rv = 1;
 
   # Find erased directory entry.
-##FIXME
+  my ($storage_type, $file_type, $key_pointer, $blocks_used, $eof, $header_pointer, $i) = find_file($pofile, $filename, 3, $debug);
+
+  print "storage_type=$storage_type file_type=$file_type key_pointer=$key_pointer blocks_used=$blocks_used eof=$eof header_pointer=$header_pointer i=$i\n";
+
   # Re-set the STORAGE_TYPE/NAME_LENGTH byte.
+  if ($file_type eq 'DIR') {
+    # Directory
+    $storage_type = 0x0d;
+  # Guess on whether it is a seedling, sapling or tree based on EOF.
+  } elsif ($eof <= 512) {
+    # Seedling;
+    $storage_type = 0x10;
+  } elsif ($eof <= (256 * 512)) {
+    # Saplingg;
+    $storage_type = 0x20;
+  } else {
+    # Tree
+    $storage_type = 0x30;
+  }
+  $storage_type |= length($filename);
+
+  printf("storage_type=\$%02x\n", $storage_type);
+
 ##FIXME
   # Re-mark all the blocks for the file as used.
 ##FIXME
