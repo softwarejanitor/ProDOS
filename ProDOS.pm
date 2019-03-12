@@ -1513,6 +1513,17 @@ sub find_empty_fdescent {
 
   my ($prv_vol_dir_blk, $nxt_vol_dir_blk, $storage_type_name_length, $volume_name, $creation_ymd, $creation_hm, $version, $min_version, $access, $entry_length, $entries_per_block, $file_count, $bit_map_pointer, $total_blocks, @files) = get_key_vol_dir_blk($pofile, 2, $debug);
 
+  my @subdirs = ();
+  if ($subdir =~ /\//) {
+    @subdirs = split /\//, $subdir;
+    foreach my $subd (@subdirs) {
+      print "subd=$subd\n";
+    }
+  } else {
+    push @subdirs, $subdir;
+  }
+##FIXME
+
   if (! defined $subdir || $subdir eq '') {
     # Must find a slot in the master directory.
     print "Master directory\n";
@@ -1521,12 +1532,11 @@ sub find_empty_fdescent {
       next if ! defined $file->{'header_pointer'} || $file->{'header_pointer'} eq '';
       next if ($file->{'storage_type'} != 0);
       $found_it = 1;
-print "Found empty slot header_pointer=$file->{'header_pointer'} slot=$file->{'i'}\n";
+      print "Found empty slot header_pointer=$file->{'header_pointer'} slot=$file->{'i'}\n" if $debug;
       return $file->{'header_pointer'}, $file->{'i'};
     }
 
     print "No space in master directory\n";
-##FIXME
   } else {
     # If subdir not found then bag out.
     print "Subdirectory $subdir\n";
@@ -2091,10 +2101,12 @@ sub write_file {
   # Find an empty file descriptive entry in the proper subdirectory.
   my ($header_pointer, $i) = find_empty_fdescent($pofile, $subdir, $debug);
   printf("header_pointer=\$%04x i=%d\n", $header_pointer, $i);
-  return 0 if $header_pointer == 0;
+  if ($header_pointer == 0) {
+    # May need to add a subdirectory block if the directory is full.
 ##FIXME
-  # May need to add a subdirectory block if the directory is full.
-##FIXME
+    print "No directory space available\n";
+    return 0;
+  }
 
   my $rv = 1;
 
@@ -2378,7 +2390,6 @@ sub write_file {
       # Write the file descriptive entry back out.
       if (!write_blk($pofile, $header_pointer, \$dirbuf)) {
         print "I/O Error writing block $header_pointer\n";
-##FIXME
         return 0;
       }
     } else {
@@ -2392,7 +2403,7 @@ sub write_file {
     return 0;
   }
 
-  return 1;
+  return $rv;
 }
 
 #
@@ -2666,6 +2677,21 @@ sub copy_file {
   $debug = 1 if defined $dbg && $dbg;
 
   print "pofile=$pofile filename=$filename copy_filename=$copy_filename\n" if $debug;
+
+  # Check to see if source file exists.
+##FIXME
+  # Check to see if dest file exists.
+##FIXME
+  # Determine storage type.
+##FIXME
+  # Check to see if there is enough space on volume.
+##FIXME
+  # Read source blocks.
+##FIXME
+  # Write dest blocks.
+##FIXME
+  # Reserve blocks for dest file.
+##FIXME
 }
 
 #
